@@ -1,0 +1,57 @@
+{
+    "name": "seo-campaign-hub/seo-campaign-hub",
+    "description": "Advanced SEO landing page builder with affiliate marketing, URL shortening, analytics, and campaign management",
+    "type": "wordpress-plugin",
+    "license": "GPL-2.0-or-later",
+    "authors": [
+        {
+            "name": "SEO Campaign Hub",
+            "email": "info@seocampaignhub.com"
+        }
+    ],
+    "minimum-stability": "stable",
+    "prefer-stable": true,
+    "require": {
+        "php": ">=8.2",
+        "ext-json": "*",
+        "ext-mbstring": "*",
+        "ext-gd": "*",
+        "ext-pdo": "*",
+        "ext-pdo_mysql": "*"
+    },
+    "require-dev": {
+        "phpunit/phpunit": "^9.5",
+        "squizlabs/php_codesniffer": "^3.7",
+        "wp-coding-standards/wpcs": "^3.0",
+        "phpcompatibility/php-compatibility": "^9.3",
+        "phpstan/phpstan": "^1.10"
+    },
+    "autoload": {
+        "psr-4": {
+            "SEO_Campaign_Hub\\": "src/"
+        },
+        "files": [
+            "src/Helpers/Functions.php"
+        ]
+    },
+    "autoload-dev": {
+        "psr-4": {
+            "SEO_Campaign_Hub\\Tests\\": "tests/"
+        }
+    },
+    "scripts": {
+        "test": "phpunit",
+        "lint": "phpcs --standard=phpcs.xml",
+        "fix": "phpcbf --standard=phpcs.xml",
+        "analyze": "phpstan analyse -c phpstan.neon"
+    },
+    "config": {
+        "allow-plugins": {
+            "dealerdirect/phpcodesniffer-composer-installer": true
+        },
+        "optimize-autoloader": true,
+        "sort-packages": true,
+        "platform-check": true,
+        "preferred-install": "dist"
+    }
+}
