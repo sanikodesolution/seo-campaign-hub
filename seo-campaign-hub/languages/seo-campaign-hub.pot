@@ -1,0 +1,458 @@
+# Copyright (C) 2024 SEO Campaign Hub
+# This file is distributed under the GNU General Public License v2 or later.
+msgid ""
+msgstr ""
+"Project-Id-Version: SEO Campaign Hub 1.0.0\n"
+"Report-Msgid-Bugs-To: https://seocampaignhub.com/support\n"
+"POT-Creation-Date: 2024-01-01 00:00:00+00:00\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"PO-Revision-Date: 2024-01-01 00:00:00+00:00\n"
+"Last-Translator: SEO Campaign Hub <info@seocampaignhub.com>\n"
+"Language-Team: SEO Campaign Hub <info@seocampaignhub.com>\n"
+"X-Generator: WP-CLI 2.0\n"
+
+#: seo-campaign-hub.php:4
+msgid "Advanced SEO landing page builder with affiliate marketing, URL shortening, analytics, and campaign management"
+msgstr ""
+
+#: seo-campaign-hub.php:67
+msgid "SEO Campaign Hub Error:"
+msgstr ""
+
+#: seo-campaign-hub.php:70
+msgid "This plugin requires PHP version %1$s or higher. Your current PHP version is %2$s. Please upgrade your PHP version to use this plugin."
+msgstr ""
+
+#: src/Core/Plugin.php:108
+msgid "Campaigns"
+msgstr ""
+
+#: src/Core/Plugin.php:109
+msgid "Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:110
+msgid "Add New Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:111
+msgid "Add New Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:112
+msgid "Edit Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:113
+msgid "New Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:114
+msgid "View Campaign"
+msgstr ""
+
+#: src/Core/Plugin.php:115
+msgid "Search Campaigns"
+msgstr ""
+
+#: src/Core/Plugin.php:116
+msgid "No campaigns found"
+msgstr ""
+
+#: src/Core/Plugin.php:117
+msgid "No campaigns found in trash"
+msgstr ""
+
+#: src/Core/Plugin.php:118
+msgid "SEO Campaign Hub"
+msgstr ""
+
+#: src/Core/Plugin.php:119
+msgid "All Campaigns"
+msgstr ""
+
+#: src/Core/Plugin.php:120
+msgid "Campaign Archives"
+msgstr ""
+
+#: src/Core/Plugin.php:149
+msgid "Offers"
+msgstr ""
+
+#: src/Core/Plugin.php:150
+msgid "Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:151
+msgid "Add New Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:152
+msgid "Add New Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:153
+msgid "Edit Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:154
+msgid "New Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:155
+msgid "View Offer"
+msgstr ""
+
+#: src/Core/Plugin.php:156
+msgid "Search Offers"
+msgstr ""
+
+#: src/Core/Plugin.php:157
+msgid "No offers found"
+msgstr ""
+
+#: src/Core/Plugin.php:158
+msgid "No offers found in trash"
+msgstr ""
+
+#: src/Core/Plugin.php:257
+msgid "Learn More"
+msgstr ""
+
+#: src/Admin/AdminInit.php:40
+msgid "SEO Campaign Hub"
+msgstr ""
+
+#: src/Admin/AdminInit.php:42
+msgid "Dashboard"
+msgstr ""
+
+#: src/Admin/AdminInit.php:64
+msgid "URL Shortener"
+msgstr ""
+
+#: src/Admin/AdminInit.php:71
+msgid "QR Codes"
+msgstr ""
+
+#: src/Admin/AdminInit.php:78
+msgid "Analytics"
+msgstr ""
+
+#: src/Admin/AdminInit.php:85
+msgid "Settings"
+msgstr ""
+
+#: src/Admin/AdminInit.php:92
+msgid "Import/Export"
+msgstr ""
+
+#: src/Admin/AdminInit.php:99
+msgid "Help & Support"
+msgstr ""
+
+#: src/Admin/AdminInit.php:107
+msgid "SEO Campaign Hub Dashboard"
+msgstr ""
+
+#: src/Admin/AdminInit.php:132
+msgid "Welcome to SEO Campaign Hub!"
+msgstr ""
+
+#: src/Admin/Settings.php:54
+msgid "General Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:55
+msgid "Configure general plugin settings."
+msgstr ""
+
+#: src/Admin/Settings.php:58
+msgid "SEO Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:59
+msgid "Configure SEO optimization settings."
+msgstr ""
+
+#: src/Admin/Settings.php:62
+msgid "Analytics Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:63
+msgid "Configure analytics tracking."
+msgstr ""
+
+#: src/Admin/Settings.php:66
+msgid "URL Shortener Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:67
+msgid "Configure URL shortening features."
+msgstr ""
+
+#: src/Admin/Settings.php:70
+msgid "QR Code Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:71
+msgid "Configure QR code generation."
+msgstr ""
+
+#: src/Admin/Settings.php:74
+msgid "Advanced Settings"
+msgstr ""
+
+#: src/Admin/Settings.php:75
+msgid "Advanced plugin settings."
+msgstr ""
+
+#: src/Admin/Settings.php:84
+msgid "Enable Plugin"
+msgstr ""
+
+#: src/Admin/Settings.php:85
+msgid "Enable or disable the plugin functionality."
+msgstr ""
+
+#: src/Admin/Settings.php:89
+msgid "Default Redirect Type"
+msgstr ""
+
+#: src/Admin/Settings.php:90
+msgid "Select the default redirect type for links."
+msgstr ""
+
+#: src/Admin/Settings.php:93
+msgid "301 - Permanent"
+msgstr ""
+
+#: src/Admin/Settings.php:94
+msgid "302 - Temporary"
+msgstr ""
+
+#: src/Admin/Settings.php:95
+msgid "307 - Temporary (same method)"
+msgstr ""
+
+#: src/Admin/Settings.php:103
+msgid "Enable Schema Markup"
+msgstr ""
+
+#: src/Admin/Settings.php:104
+msgid "Automatically add schema markup to campaign pages."
+msgstr ""
+
+#: src/Admin/Settings.php:108
+msgid "Enable Meta Tags"
+msgstr ""
+
+#: src/Admin/Settings.php:109
+msgid "Automatically add meta tags to campaign pages."
+msgstr ""
+
+#: src/Admin/Settings.php:113
+msgid "Enable Open Graph"
+msgstr ""
+
+#: src/Admin/Settings.php:114
+msgid "Add Open Graph tags for social sharing."
+msgstr ""
+
+#: src/Admin/Settings.php:122
+msgid "Enable Analytics"
+msgstr ""
+
+#: src/Admin/Settings.php:123
+msgid "Enable analytics tracking."
+msgstr ""
+
+#: src/Admin/Settings.php:127
+msgid "Anonymize IP Addresses"
+msgstr ""
+
+#: src/Admin/Settings.php:128
+msgid "Anonymize IP addresses for GDPR compliance."
+msgstr ""
+
+#: src/Admin/Settings.php:132
+msgid "Ignore Bots"
+msgstr ""
+
+#: src/Admin/Settings.php:133
+msgid "Do not track traffic from bots and crawlers."
+msgstr ""
+
+#: src/Admin/Settings.php:137
+msgid "Track Page Views"
+msgstr ""
+
+#: src/Admin/Settings.php:138
+msgid "Track page views for campaigns."
+msgstr ""
+
+#: src/Admin/Settings.php:142
+msgid "Track Clicks"
+msgstr ""
+
+#: src/Admin/Settings.php:143
+msgid "Track clicks on offers and links."
+msgstr ""
+
+#: src/Admin/Settings.php:147
+msgid "Track Conversions"
+msgstr ""
+
+#: src/Admin/Settings.php:148
+msgid "Track conversion events."
+msgstr ""
+
+#: src/Admin/Settings.php:152
+msgid "Data Retention (Days)"
+msgstr ""
+
+#: src/Admin/Settings.php:153
+msgid "Number of days to keep analytics data."
+msgstr ""
+
+#: src/Admin/Settings.php:161
+msgid "Enable URL Shortener"
+msgstr ""
+
+#: src/Admin/Settings.php:162
+msgid "Enable URL shortening functionality."
+msgstr ""
+
+#: src/Admin/Settings.php:166
+msgid "Slug Length"
+msgstr ""
+
+#: src/Admin/Settings.php:167
+msgid "Length of the short URL slug."
+msgstr ""
+
+#: src/Admin/Settings.php:171
+msgid "URL Prefix"
+msgstr ""
+
+#: src/Admin/Settings.php:172
+msgid "Prefix for short URLs (e.g., go, link)."
+msgstr ""
+
+#: src/Admin/Settings.php:180
+msgid "Enable QR Codes"
+msgstr ""
+
+#: src/Admin/Settings.php:181
+msgid "Enable QR code generation."
+msgstr ""
+
+#: src/Admin/Settings.php:185
+msgid "Default QR Size"
+msgstr ""
+
+#: src/Admin/Settings.php:186
+msgid "Default QR code size in pixels."
+msgstr ""
+
+#: src/Admin/Settings.php:190
+msgid "Default Format"
+msgstr ""
+
+#: src/Admin/Settings.php:191
+msgid "Default QR code format."
+msgstr ""
+
+#: src/Admin/Settings.php:196
+msgid "PNG"
+msgstr ""
+
+#: src/Admin/Settings.php:197
+msgid "SVG"
+msgstr ""
+
+#: src/Admin/Settings.php:198
+msgid "PDF"
+msgstr ""
+
+#: src/Admin/Settings.php:201
+msgid "Default Color"
+msgstr ""
+
+#: src/Admin/Settings.php:202
+msgid "Default QR code color."
+msgstr ""
+
+#: src/Admin/Settings.php:206
+msgid "Default Background Color"
+msgstr ""
+
+#: src/Admin/Settings.php:207
+msgid "Default QR code background color."
+msgstr ""
+
+#: src/Admin/Settings.php:215
+msgid "Enable Caching"
+msgstr ""
+
+#: src/Admin/Settings.php:216
+msgid "Enable caching for improved performance."
+msgstr ""
+
+#: src/Admin/Settings.php:220
+msgid "Cache Expiration (seconds)"
+msgstr ""
+
+#: src/Admin/Settings.php:221
+msgid "How long to cache data in seconds."
+msgstr ""
+
+#: src/Admin/Settings.php:225
+msgid "Minify Assets"
+msgstr ""
+
+#: src/Admin/Settings.php:226
+msgid "Minify CSS and JavaScript files."
+msgstr ""
+
+#: src/Admin/Settings.php:230
+msgid "Defer JavaScript"
+msgstr ""
+
+#: src/Admin/Settings.php:231
+msgid "Defer JavaScript loading for better performance."
+msgstr ""
+
+#: src/Admin/Settings.php:286
+msgid "Unknown field type."
+msgstr ""
+
+#: src/Admin/Settings.php:457
+msgid "Are you sure you want to delete this?"
+msgstr ""
+
+#: src/Admin/Settings.php:458
+msgid "Saved successfully!"
+msgstr ""
+
+#: src/Admin/Settings.php:459
+msgid "Error saving data."
+msgstr ""
+
+#: src/Admin/Settings.php:460
+msgid "Loading..."
+msgstr ""
+
+#: src/Admin/Settings.php:461
+msgid "Processing..."
+msgstr ""
+
+#: src/Admin/Settings.php:462
+msgid "Copied to clipboard!"
+msgstr ""
+
+#: src/Admin/Settings.php:463
+msgid "Copy"
+msgstr ""

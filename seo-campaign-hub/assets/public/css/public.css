@@ -1,0 +1,394 @@
+/**
+ * SEO Campaign Hub Public CSS
+ *
+ * @package SEO_Campaign_Hub
+ */
+
+/* ============================================
+   Campaign Styles
+   ============================================ */
+
+.sch-campaign {
+    max-width: 1200px;
+    margin: 0 auto;
+    padding: 20px;
+}
+
+.sch-campaign-header {
+    margin-bottom: 30px;
+}
+
+.sch-campaign-title {
+    font-size: 32px;
+    font-weight: 700;
+    color: #1e1e1e;
+    margin: 0 0 10px 0;
+}
+
+.sch-campaign-meta {
+    font-size: 14px;
+    color: #777;
+    display: flex;
+    flex-wrap: wrap;
+    gap: 15px;
+    margin-bottom: 20px;
+}
+
+.sch-campaign-meta span {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+}
+
+.sch-campaign-featured-image {
+    margin-bottom: 30px;
+}
+
+.sch-campaign-featured-image img {
+    width: 100%;
+    height: auto;
+    border-radius: 8px;
+}
+
+.sch-campaign-content {
+    font-size: 16px;
+    line-height: 1.8;
+    color: #333;
+}
+
+.sch-campaign-content p {
+    margin-bottom: 20px;
+}
+
+.sch-campaign-content h2 {
+    font-size: 24px;
+    margin: 30px 0 15px 0;
+    color: #1e1e1e;
+}
+
+.sch-campaign-content h3 {
+    font-size: 20px;
+    margin: 25px 0 10px 0;
+    color: #1e1e1e;
+}
+
+.sch-campaign-content ul,
+.sch-campaign-content ol {
+    margin: 0 0 20px 20px;
+}
+
+.sch-campaign-content li {
+    margin-bottom: 5px;
+}
+
+.sch-campaign-content img {
+    max-width: 100%;
+    height: auto;
+    border-radius: 4px;
+}
+
+.sch-campaign-content blockquote {
+    margin: 20px 0;
+    padding: 15px 20px;
+    border-left: 4px solid #007cba;
+    background: #f9f9f9;
+    font-style: italic;
+}
+
+/* ============================================
+   Offer Styles
+   ============================================ */
+
+.sch-offer {
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+    padding: 20px;
+    margin: 20px 0;
+    transition: all 0.3s ease;
+}
+
+.sch-offer:hover {
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.sch-offer-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+}
+
+.sch-offer-title {
+    font-size: 20px;
+    font-weight: 600;
+    color: #1e1e1e;
+    margin: 0;
+}
+
+.sch-offer-badge {
+    display: inline-block;
+    padding: 4px 12px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+    text-transform: uppercase;
+}
+
+.sch-offer-badge.featured {
+    background: #ffc107;
+    color: #333;
+}
+
+.sch-offer-badge.coupon {
+    background: #28a745;
+    color: #fff;
+}
+
+.sch-offer-badge.affiliate {
+    background: #007cba;
+    color: #fff;
+}
+
+.sch-offer-badge.cpa {
+    background: #d63638;
+    color: #fff;
+}
+
+.sch-offer-price {
+    font-size: 24px;
+    font-weight: 700;
+    color: #007cba;
+    margin: 10px 0;
+}
+
+.sch-offer-price .sale-price {
+    color: #d63638;
+}
+
+.sch-offer-price .regular-price {
+    font-size: 18px;
+    color: #999;
+    text-decoration: line-through;
+    margin-left: 10px;
+}
+
+.sch-offer-description {
+    color: #555;
+    margin: 15px 0;
+    line-height: 1.6;
+}
+
+.sch-offer-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 10px;
+    margin-top: 15px;
+}
+
+.sch-offer-actions .sch-btn {
+    display: inline-block;
+    padding: 10px 25px;
+    border-radius: 4px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    transition: all 0.3s ease;
+    cursor: pointer;
+}
+
+.sch-offer-actions .sch-btn:hover {
+    transform: translateY(-2px);
+}
+
+.sch-offer-actions .sch-btn.primary {
+    background: #007cba;
+    color: #fff;
+}
+
+.sch-offer-actions .sch-btn.primary:hover {
+    background: #005a87;
+}
+
+.sch-offer-actions .sch-btn.success {
+    background: #28a745;
+    color: #fff;
+}
+
+.sch-offer-actions .sch-btn.success:hover {
+    background: #1e7e34;
+}
+
+.sch-offer-actions .sch-btn.outline {
+    background: transparent;
+    color: #007cba;
+    border: 2px solid #007cba;
+}
+
+.sch-offer-actions .sch-btn.outline:hover {
+    background: #007cba;
+    color: #fff;
+}
+
+/* ============================================
+   Counter Styles
+   ============================================ */
+
+.sch-counter {
+    display: flex;
+    gap: 20px;
+    justify-content: center;
+    padding: 20px;
+    background: #f5f5f5;
+    border-radius: 8px;
+    margin: 20px 0;
+}
+
+.sch-counter-item {
+    text-align: center;
+}
+
+.sch-counter-item .number {
+    font-size: 36px;
+    font-weight: 700;
+    color: #007cba;
+    display: block;
+}
+
+.sch-counter-item .label {
+    font-size: 14px;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* ============================================
+   CTA Styles
+   ============================================ */
+
+.sch-cta {
+    display: inline-block;
+    padding: 12px 30px;
+    border-radius: 4px;
+    font-size: 16px;
+    font-weight: 600;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.sch-cta:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+}
+
+.sch-cta.primary {
+    background: #007cba;
+    color: #fff;
+}
+
+.sch-cta.primary:hover {
+    background: #005a87;
+}
+
+.sch-cta.success {
+    background: #28a745;
+    color: #fff;
+}
+
+.sch-cta.success:hover {
+    background: #1e7e34;
+}
+
+.sch-cta.danger {
+    background: #dc3545;
+    color: #fff;
+}
+
+.sch-cta.danger:hover {
+    background: #bd2130;
+}
+
+/* ============================================
+   QR Code Styles
+   ============================================ */
+
+.sch-qr-code {
+    display: inline-block;
+    padding: 15px;
+    background: #fff;
+    border: 1px solid #e5e5e5;
+    border-radius: 8px;
+}
+
+.sch-qr-code img {
+    display: block;
+    max-width: 100%;
+    height: auto;
+}
+
+/* ============================================
+   Short Link Styles
+   ============================================ */
+
+.sch-short-link {
+    display: inline-block;
+    padding: 8px 15px;
+    background: #f5f5f5;
+    border-radius: 4px;
+    font-size: 14px;
+    color: #007cba;
+    text-decoration: none;
+    transition: all 0.3s ease;
+}
+
+.sch-short-link:hover {
+    background: #e5e5e5;
+    color: #005a87;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media screen and (max-width: 768px) {
+    .sch-campaign-title {
+        font-size: 24px;
+    }
+    
+    .sch-offer-header {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 10px;
+    }
+    
+    .sch-counter {
+        flex-wrap: wrap;
+    }
+    
+    .sch-offer-actions {
+        flex-direction: column;
+    }
+    
+    .sch-offer-actions .sch-btn {
+        width: 100%;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .sch-campaign {
+        padding: 10px;
+    }
+    
+    .sch-campaign-title {
+        font-size: 20px;
+    }
+    
+    .sch-campaign-meta {
+        flex-direction: column;
+        gap: 5px;
+    }
+    
+    .sch-offer {
+        padding: 15px;
+    }
+}

@@ -1,0 +1,549 @@
+/**
+ * SEO Campaign Hub Admin CSS
+ *
+ * @package SEO_Campaign_Hub
+ */
+
+/* ============================================
+   General Admin Styles
+   ============================================ */
+
+.seo-campaign-hub-wrap {
+    margin: 20px 20px 0 0;
+    font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, Oxygen, Ubuntu, sans-serif;
+}
+
+.seo-campaign-hub-wrap h1 {
+    font-size: 24px;
+    font-weight: 600;
+    margin-bottom: 20px;
+    color: #1e1e1e;
+}
+
+/* ============================================
+   Dashboard Widgets
+   ============================================ */
+
+.seo-campaign-hub-dashboard {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+    gap: 20px;
+    margin: 20px 0;
+}
+
+.seo-campaign-hub-widget {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 8px;
+    padding: 20px;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.05);
+    transition: all 0.2s ease;
+}
+
+.seo-campaign-hub-widget:hover {
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+}
+
+.seo-campaign-hub-widget .widget-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    margin-bottom: 15px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #eee;
+}
+
+.seo-campaign-hub-widget .widget-header h3 {
+    margin: 0;
+    font-size: 16px;
+    font-weight: 600;
+    color: #1e1e1e;
+}
+
+.seo-campaign-hub-widget .widget-header .widget-icon {
+    color: #007cba;
+    font-size: 20px;
+}
+
+.seo-campaign-hub-widget .widget-content {
+    font-size: 14px;
+    color: #555;
+}
+
+.seo-campaign-hub-widget .widget-content .stat-number {
+    font-size: 32px;
+    font-weight: 700;
+    color: #007cba;
+    display: block;
+    margin-bottom: 5px;
+}
+
+.seo-campaign-hub-widget .widget-content .stat-label {
+    color: #777;
+    font-size: 13px;
+}
+
+.seo-campaign-hub-widget .widget-footer {
+    margin-top: 15px;
+    padding-top: 10px;
+    border-top: 1px solid #eee;
+}
+
+.seo-campaign-hub-widget .widget-footer a {
+    color: #007cba;
+    text-decoration: none;
+    font-weight: 500;
+}
+
+.seo-campaign-hub-widget .widget-footer a:hover {
+    text-decoration: underline;
+}
+
+/* Widget variations */
+.seo-campaign-hub-widget.primary {
+    border-left: 4px solid #007cba;
+}
+
+.seo-campaign-hub-widget.success {
+    border-left: 4px solid #46b450;
+}
+
+.seo-campaign-hub-widget.warning {
+    border-left: 4px solid #f0ad4e;
+}
+
+.seo-campaign-hub-widget.danger {
+    border-left: 4px solid #d63638;
+}
+
+/* ============================================
+   Stats Grid
+   ============================================ */
+
+.seo-campaign-hub-stats-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+    gap: 15px;
+    margin: 20px 0;
+}
+
+.seo-campaign-hub-stat-box {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 15px 20px;
+    text-align: center;
+    transition: all 0.2s ease;
+}
+
+.seo-campaign-hub-stat-box:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(0,0,0,0.08);
+}
+
+.seo-campaign-hub-stat-box .stat-number {
+    font-size: 28px;
+    font-weight: 700;
+    color: #007cba;
+    display: block;
+}
+
+.seo-campaign-hub-stat-box .stat-label {
+    font-size: 13px;
+    color: #777;
+    margin-top: 5px;
+}
+
+/* ============================================
+   Tables
+   ============================================ */
+
+.seo-campaign-hub-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin: 15px 0;
+    background: #fff;
+    border-radius: 6px;
+    overflow: hidden;
+}
+
+.seo-campaign-hub-table thead {
+    background: #f5f5f5;
+}
+
+.seo-campaign-hub-table th {
+    padding: 12px 15px;
+    text-align: left;
+    font-weight: 600;
+    font-size: 13px;
+    color: #444;
+    border-bottom: 2px solid #ddd;
+}
+
+.seo-campaign-hub-table td {
+    padding: 10px 15px;
+    border-bottom: 1px solid #eee;
+    font-size: 13px;
+    color: #555;
+}
+
+.seo-campaign-hub-table tr:hover {
+    background: #f9f9f9;
+}
+
+.seo-campaign-hub-table .status-badge {
+    display: inline-block;
+    padding: 3px 10px;
+    border-radius: 4px;
+    font-size: 12px;
+    font-weight: 500;
+}
+
+.seo-campaign-hub-table .status-badge.active {
+    background: #d4edda;
+    color: #155724;
+}
+
+.seo-campaign-hub-table .status-badge.inactive {
+    background: #f8d7da;
+    color: #721c24;
+}
+
+.seo-campaign-hub-table .status-badge.pending {
+    background: #fff3cd;
+    color: #856404;
+}
+
+.seo-campaign-hub-table .status-badge.draft {
+    background: #e2e3e5;
+    color: #383d41;
+}
+
+/* ============================================
+   Forms
+   ============================================ */
+
+.seo-campaign-hub-form {
+    max-width: 800px;
+}
+
+.seo-campaign-hub-form .form-group {
+    margin-bottom: 20px;
+}
+
+.seo-campaign-hub-form .form-group label {
+    display: block;
+    font-weight: 600;
+    margin-bottom: 5px;
+    color: #333;
+}
+
+.seo-campaign-hub-form .form-group .description {
+    display: block;
+    color: #777;
+    font-size: 13px;
+    margin-top: 5px;
+}
+
+.seo-campaign-hub-form .form-group input[type="text"],
+.seo-campaign-hub-form .form-group input[type="number"],
+.seo-campaign-hub-form .form-group input[type="url"],
+.seo-campaign-hub-form .form-group select,
+.seo-campaign-hub-form .form-group textarea {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+.seo-campaign-hub-form .form-group input[type="text"]:focus,
+.seo-campaign-hub-form .form-group input[type="number"]:focus,
+.seo-campaign-hub-form .form-group input[type="url"]:focus,
+.seo-campaign-hub-form .form-group select:focus,
+.seo-campaign-hub-form .form-group textarea:focus {
+    border-color: #007cba;
+    outline: none;
+    box-shadow: 0 0 0 1px #007cba;
+}
+
+.seo-campaign-hub-form .form-group textarea {
+    min-height: 100px;
+    resize: vertical;
+}
+
+.seo-campaign-hub-form .form-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 20px;
+}
+
+/* ============================================
+   Buttons
+   ============================================ */
+
+.seo-campaign-hub-btn {
+    display: inline-block;
+    padding: 8px 20px;
+    font-size: 14px;
+    font-weight: 500;
+    text-align: center;
+    text-decoration: none;
+    border-radius: 4px;
+    border: none;
+    cursor: pointer;
+    transition: all 0.2s ease;
+}
+
+.seo-campaign-hub-btn:hover {
+    opacity: 0.9;
+    transform: translateY(-1px);
+}
+
+.seo-campaign-hub-btn.primary {
+    background: #007cba;
+    color: #fff;
+}
+
+.seo-campaign-hub-btn.primary:hover {
+    background: #005a87;
+}
+
+.seo-campaign-hub-btn.success {
+    background: #46b450;
+    color: #fff;
+}
+
+.seo-campaign-hub-btn.success:hover {
+    background: #389a41;
+}
+
+.seo-campaign-hub-btn.danger {
+    background: #d63638;
+    color: #fff;
+}
+
+.seo-campaign-hub-btn.danger:hover {
+    background: #b32d2f;
+}
+
+.seo-campaign-hub-btn.warning {
+    background: #f0ad4e;
+    color: #fff;
+}
+
+.seo-campaign-hub-btn.warning:hover {
+    background: #d8901a;
+}
+
+.seo-campaign-hub-btn.secondary {
+    background: #f5f5f5;
+    color: #333;
+    border: 1px solid #ddd;
+}
+
+.seo-campaign-hub-btn.secondary:hover {
+    background: #e5e5e5;
+}
+
+.seo-campaign-hub-btn.small {
+    padding: 4px 12px;
+    font-size: 12px;
+}
+
+.seo-campaign-hub-btn.large {
+    padding: 12px 30px;
+    font-size: 16px;
+}
+
+/* ============================================
+   Notices
+   ============================================ */
+
+.seo-campaign-hub-notice {
+    padding: 12px 20px;
+    margin: 15px 0;
+    border-radius: 4px;
+    border-left: 4px solid;
+}
+
+.seo-campaign-hub-notice.success {
+    background: #d4edda;
+    border-color: #28a745;
+    color: #155724;
+}
+
+.seo-campaign-hub-notice.error {
+    background: #f8d7da;
+    border-color: #dc3545;
+    color: #721c24;
+}
+
+.seo-campaign-hub-notice.warning {
+    background: #fff3cd;
+    border-color: #ffc107;
+    color: #856404;
+}
+
+.seo-campaign-hub-notice.info {
+    background: #d1ecf1;
+    border-color: #17a2b8;
+    color: #0c5460;
+}
+
+/* ============================================
+   Settings
+   ============================================ */
+
+.seo-campaign-hub-settings-section {
+    background: #fff;
+    border: 1px solid #ddd;
+    border-radius: 6px;
+    padding: 20px;
+    margin-bottom: 20px;
+}
+
+.seo-campaign-hub-settings-section h2 {
+    margin-top: 0;
+    margin-bottom: 15px;
+    font-size: 18px;
+    color: #1e1e1e;
+}
+
+.seo-campaign-hub-settings-section .section-description {
+    color: #777;
+    margin-bottom: 20px;
+    font-size: 14px;
+}
+
+/* ============================================
+   Responsive
+   ============================================ */
+
+@media screen and (max-width: 782px) {
+    .seo-campaign-hub-dashboard {
+        grid-template-columns: 1fr;
+    }
+    
+    .seo-campaign-hub-stats-grid {
+        grid-template-columns: 1fr 1fr;
+    }
+    
+    .seo-campaign-hub-form .form-row {
+        grid-template-columns: 1fr;
+    }
+    
+    .seo-campaign-hub-table {
+        font-size: 12px;
+    }
+    
+    .seo-campaign-hub-table th,
+    .seo-campaign-hub-table td {
+        padding: 8px 10px;
+    }
+}
+
+@media screen and (max-width: 480px) {
+    .seo-campaign-hub-stats-grid {
+        grid-template-columns: 1fr;
+    }
+}
+
+/* ============================================
+   Dark Mode Support
+   ============================================ */
+
+@media (prefers-color-scheme: dark) {
+    .seo-campaign-hub-wrap h1 {
+        color: #fff;
+    }
+    
+    .seo-campaign-hub-widget {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    
+    .seo-campaign-hub-widget .widget-header {
+        border-bottom-color: #333;
+    }
+    
+    .seo-campaign-hub-widget .widget-header h3 {
+        color: #fff;
+    }
+    
+    .seo-campaign-hub-widget .widget-content {
+        color: #ccc;
+    }
+    
+    .seo-campaign-hub-widget .widget-content .stat-label {
+        color: #999;
+    }
+    
+    .seo-campaign-hub-widget .widget-footer {
+        border-top-color: #333;
+    }
+    
+    .seo-campaign-hub-stat-box {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    
+    .seo-campaign-hub-stat-box .stat-label {
+        color: #999;
+    }
+    
+    .seo-campaign-hub-table {
+        background: #1e1e1e;
+    }
+    
+    .seo-campaign-hub-table thead {
+        background: #2d2d2d;
+    }
+    
+    .seo-campaign-hub-table th {
+        color: #ccc;
+        border-bottom-color: #444;
+    }
+    
+    .seo-campaign-hub-table td {
+        color: #ccc;
+        border-bottom-color: #333;
+    }
+    
+    .seo-campaign-hub-table tr:hover {
+        background: #2d2d2d;
+    }
+    
+    .seo-campaign-hub-settings-section {
+        background: #1e1e1e;
+        border-color: #333;
+    }
+    
+    .seo-campaign-hub-settings-section h2 {
+        color: #fff;
+    }
+    
+    .seo-campaign-hub-form .form-group label {
+        color: #ccc;
+    }
+    
+    .seo-campaign-hub-form .form-group input[type="text"],
+    .seo-campaign-hub-form .form-group input[type="number"],
+    .seo-campaign-hub-form .form-group input[type="url"],
+    .seo-campaign-hub-form .form-group select,
+    .seo-campaign-hub-form .form-group textarea {
+        background: #2d2d2d;
+        border-color: #444;
+        color: #ccc;
+    }
+    
+    .seo-campaign-hub-btn.secondary {
+        background: #2d2d2d;
+        color: #ccc;
+        border-color: #444;
+    }
+    
+    .seo-campaign-hub-btn.secondary:hover {
+        background: #3d3d3d;
+    }
+}
