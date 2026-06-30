@@ -112,6 +112,3 @@ class Autoloader {
         return str_replace(['\\', '/'], DIRECTORY_SEPARATOR, $path);
     }
 }
-
-// Register the autoloader
-Autoloader::register();

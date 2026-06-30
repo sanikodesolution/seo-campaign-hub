@@ -42,11 +42,17 @@ final class Plugin {
     /**
      * Get plugin instance (Singleton pattern)
      *
+     * FIX: init() was never being called anywhere in the original code,
+     * which meant the plugin would activate but do nothing — no hooks,
+     * no services, no admin UI. Calling it here, guarded by $initialized,
+     * ensures it always runs exactly once when the instance is first created.
+     *
      * @return Plugin
      */
     public static function get_instance() {
         if (null === self::$instance) {
             self::$instance = new self();
+            self::$instance->init();
         }
         return self::$instance;
     }
@@ -201,6 +207,13 @@ final class Plugin {
     /**
      * Initialize context-specific components
      *
+     * FIX: `Public` is a reserved word in PHP and cannot be used as a
+     * namespace/class segment — this would throw a parse error the moment
+     * this class (or SEO_Campaign_Hub\Public\PublicInit) was loaded.
+     * Renamed to `Frontend` here. You must also rename the actual
+     * src/Public/ directory to src/Frontend/ and update the namespace
+     * declaration inside PublicInit.php itself to match.
+     *
      * @return void
      */
     private function init_context() {
@@ -209,9 +222,9 @@ final class Plugin {
             $admin_init = new \SEO_Campaign_Hub\Admin\AdminInit($this->container);
             $admin_init->init();
         } else {
-            // Initialize public components
-            $public_init = new \SEO_Campaign_Hub\Public\PublicInit($this->container);
-            $public_init->init();
+            // Initialize frontend components
+            $frontend_init = new \SEO_Campaign_Hub\Frontend\PublicInit($this->container);
+            $frontend_init->init();
         }
     }
 
@@ -398,4 +411,22 @@ final class Plugin {
                 'update_item'       => __('Update Category', 'seo-campaign-hub'),
                 'add_new_item'      => __('Add New Category', 'seo-campaign-hub'),
                 'new_item_name'     => __('New Category Name', 'seo-campaign-hub'),
-               
+
+    // ============================================================
+    // TRUNCATED HERE — this is exactly where your pasted file cut off.
+    // Everything below this point is MISSING from what you've given me:
+    //
+    //   - rest of register_taxonomies()
+    //   - register_shortcodes()
+    //   - register_widgets()
+    //   - add_rewrite_rules()
+    //   - handle_redirects()
+    //   - enqueue_admin_assets()
+    //   - enqueue_public_assets()
+    //   - closing brace for the class
+    //
+    // I have NOT invented these — doing so would risk introducing wrong
+    // rewrite rules or redirect logic (security-sensitive for a URL
+    // shortener plugin). Paste the rest of your original Plugin.php
+    // (from "new_item_name" onward) and I'll merge + fix it properly.
+    // ============================================================

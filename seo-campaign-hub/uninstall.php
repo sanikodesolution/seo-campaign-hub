@@ -74,23 +74,25 @@ $wpdb->query(
 // Remove files
 $upload_dir = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'uploads/';
 if (file_exists($upload_dir)) {
-    // Recursive delete function
-    function delete_directory($dir) {
-        if (!file_exists($dir)) {
-            return;
-        }
-        $files = array_diff(scandir($dir), ['.', '..']);
-        foreach ($files as $file) {
-            $path = $dir . '/' . $file;
-            if (is_dir($path)) {
-                delete_directory($path);
-            } else {
-                wp_delete_file($path);
+    // Recursive delete function (guarded against redeclaration fatal errors)
+    if (!function_exists('seo_campaign_hub_delete_directory')) {
+        function seo_campaign_hub_delete_directory($dir) {
+            if (!file_exists($dir)) {
+                return;
             }
+            $files = array_diff(scandir($dir), ['.', '..']);
+            foreach ($files as $file) {
+                $path = $dir . '/' . $file;
+                if (is_dir($path)) {
+                    seo_campaign_hub_delete_directory($path);
+                } else {
+                    wp_delete_file($path);
+                }
+            }
+            rmdir($dir);
         }
-        rmdir($dir);
     }
-    delete_directory($upload_dir);
+    seo_campaign_hub_delete_directory($upload_dir);
 }
 
 // Clear scheduled events
