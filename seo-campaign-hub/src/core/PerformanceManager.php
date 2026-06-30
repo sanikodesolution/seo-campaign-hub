@@ -90,9 +90,20 @@ class PerformanceManager {
     /**
      * Check performance of queries
      *
+     * FIX: $wpdb->queries is only populated when SAVEQUERIES is defined
+     * and true — on a normal production site (where SAVEQUERIES is off
+     * by default) this previously ran array_filter() over an always-empty
+     * array, silently doing nothing while still being called on every
+     * 'seo_campaign_hub_performance_check' hook. Added an explicit guard
+     * so this is a deliberate no-op rather than a silent dead path.
+     *
      * @return void
      */
     public function check_performance() {
+        if (!defined('SAVEQUERIES') || !SAVEQUERIES) {
+            return;
+        }
+
         global $wpdb;
         $queries = $wpdb->queries;
         $slow_queries = array_filter($queries, function($query) {
@@ -167,6 +178,13 @@ class PerformanceManager {
 
     /**
      * Minify JavaScript
+     *
+     * NOTE: This is a naive regex-based minifier. It will incorrectly
+     * strip "//" sequences that appear inside strings or URLs (e.g.
+     * "https://example.com") and can break JS relying on automatic
+     * semicolon insertion. Safe only for trivial inline snippets — if
+     * your build process already minifies bundled assets, prefer that
+     * and avoid running this on real-world JS files.
      *
      * @param string $js JavaScript content
      * @return string
