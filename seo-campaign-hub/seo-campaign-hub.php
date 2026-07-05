@@ -59,26 +59,22 @@ if ( ! defined( 'SEO_CAMPAIGN_HUB_REST_NAMESPACE' ) ) {
     define( 'SEO_CAMPAIGN_HUB_REST_NAMESPACE', 'seo-campaign-hub/v1' );
 }
 
-// Cache expiration times (in seconds)
 if ( ! defined( 'SEO_CAMPAIGN_HUB_CACHE_SHORT' ) ) {
-    define( 'SEO_CAMPAIGN_HUB_CACHE_SHORT', 300 ); // 5 minutes
+    define( 'SEO_CAMPAIGN_HUB_CACHE_SHORT', 300 );
 }
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_CACHE_MEDIUM' ) ) {
-    define( 'SEO_CAMPAIGN_HUB_CACHE_MEDIUM', 3600 ); // 1 hour
+    define( 'SEO_CAMPAIGN_HUB_CACHE_MEDIUM', 3600 );
 }
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_CACHE_LONG' ) ) {
-    define( 'SEO_CAMPAIGN_HUB_CACHE_LONG', 86400 ); // 24 hours
+    define( 'SEO_CAMPAIGN_HUB_CACHE_LONG', 86400 );
 }
 
 // ============================================
 // REQUIREMENT CHECKS
 // ============================================
 
-/**
- * Check PHP version compatibility — must run before autoloader.
- */
 if ( version_compare( PHP_VERSION, SEO_CAMPAIGN_HUB_MINIMUM_PHP_VERSION, '<' ) ) {
     add_action( 'admin_notices', 'seo_campaign_hub_php_version_error' );
 
@@ -89,10 +85,7 @@ if ( version_compare( PHP_VERSION, SEO_CAMPAIGN_HUB_MINIMUM_PHP_VERSION, '<' ) )
                 <strong><?php esc_html_e( 'SEO Campaign Hub Error:', 'seo-campaign-hub' ); ?></strong>
                 <?php
                 printf(
-                    esc_html__(
-                        'This plugin requires PHP version %1$s or higher. Your current PHP version is %2$s. Please upgrade your PHP version to use this plugin.',
-                        'seo-campaign-hub'
-                    ),
+                    esc_html__( 'This plugin requires PHP version %1$s or higher. Your current PHP version is %2$s.', 'seo-campaign-hub' ),
                     esc_html( SEO_CAMPAIGN_HUB_MINIMUM_PHP_VERSION ),
                     esc_html( PHP_VERSION )
                 );
@@ -102,12 +95,9 @@ if ( version_compare( PHP_VERSION, SEO_CAMPAIGN_HUB_MINIMUM_PHP_VERSION, '<' ) )
         <?php
     }
 
-    return; // Stop execution — do NOT load autoloader or register hooks
+    return;
 }
 
-/**
- * Check WordPress version compatibility.
- */
 global $wp_version;
 if ( version_compare( $wp_version, SEO_CAMPAIGN_HUB_MINIMUM_WP_VERSION, '<' ) ) {
     add_action( 'admin_notices', 'seo_campaign_hub_wp_version_error' );
@@ -120,10 +110,7 @@ if ( version_compare( $wp_version, SEO_CAMPAIGN_HUB_MINIMUM_WP_VERSION, '<' ) ) 
                 <strong><?php esc_html_e( 'SEO Campaign Hub Error:', 'seo-campaign-hub' ); ?></strong>
                 <?php
                 printf(
-                    esc_html__(
-                        'This plugin requires WordPress version %1$s or higher. Your current WordPress version is %2$s. Please upgrade WordPress to use this plugin.',
-                        'seo-campaign-hub'
-                    ),
+                    esc_html__( 'This plugin requires WordPress version %1$s or higher. Your current WordPress version is %2$s.', 'seo-campaign-hub' ),
                     esc_html( SEO_CAMPAIGN_HUB_MINIMUM_WP_VERSION ),
                     esc_html( $wp_version )
                 );
@@ -133,7 +120,7 @@ if ( version_compare( $wp_version, SEO_CAMPAIGN_HUB_MINIMUM_WP_VERSION, '<' ) ) 
         <?php
     }
 
-    return; // Stop execution
+    return;
 }
 
 // ============================================
@@ -146,64 +133,41 @@ require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'includes/class-autoloader.php';
 
 // ============================================
 // ACTIVATION / DEACTIVATION / UNINSTALL HOOKS
-// Note: Must be registered at file load time — NOT inside any hook.
 // ============================================
 
 register_activation_hook(
     SEO_CAMPAIGN_HUB_PLUGIN_FILE,
-    [ 'SEO_Campaign_Hub\Core\Activator', 'activate' ]
+    array( 'SEO_Campaign_Hub\Core\Activator', 'activate' )
 );
 
 register_deactivation_hook(
     SEO_CAMPAIGN_HUB_PLUGIN_FILE,
-    [ 'SEO_Campaign_Hub\Core\Deactivator', 'deactivate' ]
+    array( 'SEO_Campaign_Hub\Core\Deactivator', 'deactivate' )
 );
 
-/**
- * Uninstall hook — uses the procedural function in uninstall.php.
- * WordPress calls uninstall.php directly; register_uninstall_hook()
- * simply flags the file. A class-based callback is only safe if the
- * class file is explicitly loaded inside uninstall.php itself.
- */
 register_uninstall_hook( SEO_CAMPAIGN_HUB_PLUGIN_FILE, 'seo_campaign_hub_uninstall' );
 
 // ============================================
-// PLUGIN INITIALISATION — inside plugins_loaded
+// PLUGIN BOOT — inside plugins_loaded
 // ============================================
 
 add_action( 'plugins_loaded', 'seo_campaign_hub_boot', 10 );
 
-/**
- * Boot the plugin.
- *
- * Runs on plugins_loaded so that:
- *  - $wpdb is fully available (safe to define DB prefix constant here)
- *  - All other plugins are loaded (no dependency ordering issues)
- *  - Text domain is loaded before any translatable string is used
- */
 function seo_campaign_hub_boot() {
 
-    // ---- DB table prefix (needs $wpdb — define here, not at file top) ----
     if ( ! defined( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX' ) ) {
         global $wpdb;
         define( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX', $wpdb->prefix . 'sch_' );
     }
 
-    // ---- Text domain ----
     load_plugin_textdomain(
         'seo-campaign-hub',
         false,
         dirname( SEO_CAMPAIGN_HUB_PLUGIN_BASENAME ) . '/languages'
     );
 
-    // ---- Bootstrap main plugin instance ----
     $GLOBALS['seo_campaign_hub'] = \SEO_Campaign_Hub\Core\Plugin::get_instance();
 
-    /**
-     * Fires after SEO Campaign Hub is fully loaded.
-     *
-     * @param \SEO_Campaign_Hub\Core\Plugin $plugin The plugin instance.
-     */
     do_action( 'seo_campaign_hub_loaded', $GLOBALS['seo_campaign_hub'] );
 }
 
@@ -212,24 +176,14 @@ function seo_campaign_hub_boot() {
 // ============================================
 
 add_action( 'init', function () {
-    /**
-     * Fires during WordPress init — use for registering CPTs, taxonomies, etc.
-     */
     do_action( 'seo_campaign_hub_init' );
 }, 10 );
 
 // ============================================
-// GLOBAL HELPER (optional convenience accessor)
+// GLOBAL HELPER
 // ============================================
 
 if ( ! function_exists( 'seo_campaign_hub' ) ) {
-    /**
-     * Return the main plugin instance.
-     *
-     * Usage: seo_campaign_hub()->some_method();
-     *
-     * @return \SEO_Campaign_Hub\Core\Plugin|null
-     */
     function seo_campaign_hub() {
         return $GLOBALS['seo_campaign_hub'] ?? null;
     }
