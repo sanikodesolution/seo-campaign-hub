@@ -5,179 +5,215 @@
  * @package SEO_Campaign_Hub\Core
  */
 
-namespace SEO_Campaign_Hub\Core;
-
-if (!defined('ABSPATH')) {
+// Prevent direct access — MUST be before namespace
+if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
+
+namespace SEO_Campaign_Hub\Core;
 
 /**
  * Class Container
  *
- * Simple dependency injection container with singleton support
+ * Simple dependency injection container with singleton support.
  */
 class Container {
-    /**
-     * Registered services
-     *
-     * @var array
-     */
-    private $services = [];
 
     /**
-     * Resolved singleton instances
+     * Registered service resolver closures.
      *
-     * @var array
+     * @var array<string, callable>
      */
-    private $singletons = [];
+    private array $services = [];
 
     /**
-     * Service definitions
+     * Resolved singleton instances.
      *
-     * @var array
+     * @var array<string, mixed>
      */
-    private $definitions = [];
+    private array $singletons = [];
 
     /**
-     * Register a service
+     * Service metadata (singleton flag, resolved flag).
      *
-     * @param string   $name     Service name
-     * @param callable $resolver Resolver function
-     * @param bool     $singleton Whether to register as singleton
-     * @return self
+     * @var array<string, array{singleton: bool, resolved: bool}>
      */
-    public function register($name, callable $resolver, $singleton = false) {
-        $this->services[$name] = $resolver;
-        $this->definitions[$name] = [
+    private array $definitions = [];
+
+    // =========================================================
+    // REGISTRATION
+    // =========================================================
+
+    /**
+     * Register a service with a resolver callable.
+     *
+     * @param string   $name      Service name/key.
+     * @param callable $resolver  Callable that returns the service instance.
+     * @param bool     $singleton Whether to cache the resolved instance.
+     * @return static
+     */
+    public function register( string $name, callable $resolver, bool $singleton = false ): static {
+        $this->services[ $name ]   = $resolver;
+        $this->definitions[ $name ] = [
             'singleton' => $singleton,
-            'resolved' => false
+            'resolved'  => false,
         ];
         return $this;
     }
 
     /**
-     * Register a singleton service
+     * Register a singleton service — resolved only once, then cached.
      *
-     * @param string   $name     Service name
-     * @param callable $resolver Resolver function
-     * @return self
+     * @param string   $name     Service name/key.
+     * @param callable $resolver Callable that returns the service instance.
+     * @return static
      */
-    public function singleton($name, callable $resolver) {
-        return $this->register($name, $resolver, true);
+    public function singleton( string $name, callable $resolver ): static {
+        return $this->register( $name, $resolver, true );
     }
 
+    // =========================================================
+    // RESOLUTION
+    // =========================================================
+
     /**
-     * Get a service instance
+     * Resolve and return a service instance.
      *
-     * @param string $name Service name
+     * @param string $name Service name/key.
      * @return mixed
-     * @throws \Exception
+     * @throws \InvalidArgumentException When the service is not registered.
+     * @throws \RuntimeException         When the resolver returns a non-object for a singleton.
      */
-    public function get($name) {
-        if (!isset($this->services[$name])) {
-            throw new \Exception(
-                sprintf('Service "%s" not found in container', $name)
+    public function get( string $name ): mixed {
+        if ( ! isset( $this->services[ $name ] ) ) {
+            throw new \InvalidArgumentException(
+                sprintf( 'SEO Campaign Hub Container: service "%s" is not registered.', esc_html( $name ) )
             );
         }
 
-        // Check if this is a singleton and already resolved
-        if ($this->is_singleton($name) && isset($this->singletons[$name])) {
-            return $this->singletons[$name];
+        // Return cached singleton if already resolved
+        if ( $this->is_singleton( $name ) && isset( $this->singletons[ $name ] ) ) {
+            return $this->singletons[ $name ];
         }
 
         // Resolve the service
-        $service = call_user_func($this->services[$name]);
+        $instance = ( $this->services[ $name ] )();
 
-        // Store if it's a singleton
-        if ($this->is_singleton($name)) {
-            $this->singletons[$name] = $service;
+        // Cache singleton instances
+        if ( $this->is_singleton( $name ) ) {
+            $this->singletons[ $name ]              = $instance;
+            $this->definitions[ $name ]['resolved'] = true;
         }
 
-        return $service;
+        return $instance;
     }
 
     /**
-     * Check if a service is a singleton
+     * Check whether a service is registered.
      *
-     * @param string $name Service name
+     * @param string $name Service name/key.
      * @return bool
      */
-    private function is_singleton($name) {
-        return isset($this->definitions[$name]) && 
-               $this->definitions[$name]['singleton'] === true;
+    public function has( string $name ): bool {
+        return isset( $this->services[ $name ] );
     }
 
     /**
-     * Check if a service exists
+     * Check whether a singleton service has already been resolved.
      *
-     * @param string $name Service name
+     * @param string $name Service name/key.
      * @return bool
      */
-    public function has($name) {
-        return isset($this->services[$name]);
+    public function is_resolved( string $name ): bool {
+        return isset( $this->singletons[ $name ] );
     }
 
+    // =========================================================
+    // MANAGEMENT
+    // =========================================================
+
     /**
-     * Remove a service from the container
+     * Remove a service from the container.
      *
-     * @param string $name Service name
-     * @return self
+     * @param string $name Service name/key.
+     * @return static
      */
-    public function remove($name) {
-        unset($this->services[$name]);
-        unset($this->singletons[$name]);
-        unset($this->definitions[$name]);
+    public function remove( string $name ): static {
+        unset(
+            $this->services[ $name ],
+            $this->singletons[ $name ],
+            $this->definitions[ $name ]
+        );
         return $this;
     }
 
     /**
-     * Get all registered service names
+     * Return all registered service names.
      *
-     * @return array
+     * @return string[]
      */
-    public function get_service_names() {
-        return array_keys($this->services);
+    public function get_service_names(): array {
+        return array_keys( $this->services );
     }
 
     /**
-     * Clear all services
+     * Clear all registered services and resolved instances.
      *
-     * @return self
+     * @return static
      */
-    public function clear() {
-        $this->services = [];
-        $this->singletons = [];
+    public function clear(): static {
+        $this->services    = [];
+        $this->singletons  = [];
         $this->definitions = [];
         return $this;
     }
 
+    // =========================================================
+    // MAGIC ACCESSORS
+    // =========================================================
+
     /**
-     * Magic method to get a service
+     * Allow $container->serviceName as a shorthand for $container->get('serviceName').
      *
-     * @param string $name Service name
+     * @param string $name Service name.
      * @return mixed
      */
-    public function __get($name) {
-        return $this->get($name);
+    public function __get( string $name ): mixed {
+        return $this->get( $name );
     }
 
     /**
-     * Magic method to check if a service exists
+     * Allow isset($container->serviceName).
      *
-     * @param string $name Service name
+     * @param string $name Service name.
      * @return bool
      */
-    public function __isset($name) {
-        return $this->has($name);
+    public function __isset( string $name ): bool {
+        return $this->has( $name );
     }
 
     /**
-     * Magic method to unset a service
+     * Allow unset($container->serviceName).
      *
-     * @param string $name Service name
+     * @param string $name Service name.
      * @return void
      */
-    public function __unset($name) {
-        $this->remove($name);
+    public function __unset( string $name ): void {
+        $this->remove( $name );
+    }
+
+    // =========================================================
+    // PRIVATE HELPERS
+    // =========================================================
+
+    /**
+     * Check whether a service is registered as a singleton.
+     *
+     * @param string $name Service name.
+     * @return bool
+     */
+    private function is_singleton( string $name ): bool {
+        return isset( $this->definitions[ $name ] ) &&
+               $this->definitions[ $name ]['singleton'] === true;
     }
 }
