@@ -145,8 +145,6 @@ register_deactivation_hook(
     array( 'SEO_Campaign_Hub\Core\Deactivator', 'deactivate' )
 );
 
-register_uninstall_hook( SEO_CAMPAIGN_HUB_PLUGIN_FILE, 'seo_campaign_hub_uninstall' );
-
 // ============================================
 // PLUGIN BOOT — inside plugins_loaded
 // ============================================

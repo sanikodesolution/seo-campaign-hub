@@ -460,7 +460,13 @@ class ShortenerService {
     }
 
     /**
-     * Get link statistics
+     * Get link statistics.
      *
-     * @param int $id Link ID
+     * @param int $id Link ID.
+     * @return array<string, mixed>
+     */
+    public function get_link_stats( $id ) {
+        return [];
+    }
+}
     

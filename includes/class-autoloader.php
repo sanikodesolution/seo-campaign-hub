@@ -5,12 +5,11 @@
  * @package SEO_Campaign_Hub\Core
  */
 
-// Prevent direct access — MUST be before namespace declaration
+namespace SEO_Campaign_Hub\Core;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-
-namespace SEO_Campaign_Hub\Core;
 
 /**
  * Class Autoloader
@@ -99,6 +98,13 @@ class Autoloader {
                 return true;
             }
 
+            // Fallback for legacy lowercase file names (e.g. plugin.php vs Plugin.php).
+            $fallback = self::find_case_insensitive_file( $file );
+            if ( null !== $fallback ) {
+                require_once $fallback;
+                return true;
+            }
+
             // Log missing file in WP_DEBUG mode to help diagnose issues
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
@@ -107,5 +113,29 @@ class Autoloader {
         }
 
         return false;
+    }
+
+    /**
+     * Find a file in the same directory ignoring filename case.
+     *
+     * @param string $file Expected absolute file path.
+     * @return string|null Matched absolute path or null if not found.
+     */
+    private static function find_case_insensitive_file( string $file ): ?string {
+        $directory = dirname( $file );
+        if ( ! is_dir( $directory ) ) {
+            return null;
+        }
+
+        $expected = strtolower( basename( $file ) );
+        $matches  = glob( $directory . DIRECTORY_SEPARATOR . '*.php' );
+
+        foreach ( $matches as $candidate ) {
+            if ( strtolower( basename( $candidate ) ) === $expected ) {
+                return $candidate;
+            }
+        }
+
+        return null;
     }
 }

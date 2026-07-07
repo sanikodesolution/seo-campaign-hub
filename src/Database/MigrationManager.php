@@ -155,4 +155,12 @@ class MigrationManager {
     }
 
     /**
-     * Create a new migration
+     * Create a new migration.
+     *
+     * @param string $version Version identifier.
+     * @return bool
+     */
+    public function create_migration( $version ) {
+        return false;
+    }
+}

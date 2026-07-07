@@ -5,12 +5,11 @@
  * @package SEO_Campaign_Hub\Core
  */
 
-// Prevent direct access — MUST be before namespace
+namespace SEO_Campaign_Hub\Core;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-
-namespace SEO_Campaign_Hub\Core;
 
 /**
  * Class Container

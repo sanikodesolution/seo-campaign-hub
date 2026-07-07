@@ -5,12 +5,11 @@
  * @package SEO_Campaign_Hub\Core
  */
 
-// Prevent direct access — MUST be before namespace
+namespace SEO_Campaign_Hub\Core;
+
 if ( ! defined( 'ABSPATH' ) ) {
     exit;
 }
-
-namespace SEO_Campaign_Hub\Core;
 
 /**
  * Class Plugin
@@ -668,7 +667,7 @@ final class Plugin {
         // Admin CSS
         wp_enqueue_style(
             'seo-campaign-hub-admin',
-            $url . 'assets/css/admin.css',
+            $url . 'assets/admin/css/admin.css',
             [],
             $version
         );
@@ -676,7 +675,7 @@ final class Plugin {
         // React SPA bundle (built with Vite)
         wp_enqueue_script(
             'seo-campaign-hub-admin',
-            $url . 'assets/js/admin.js',
+            $url . 'assets/admin/js/admin.js',
             [],
             $version,
             true
@@ -710,14 +709,14 @@ final class Plugin {
 
         wp_enqueue_style(
             'seo-campaign-hub-public',
-            $url . 'assets/css/public.css',
+            $url . 'assets/public/css/public.css',
             [],
             $version
         );
 
         wp_enqueue_script(
             'seo-campaign-hub-public',
-            $url . 'assets/js/public.js',
+            $url . 'assets/public/js/public.js',
             [],
             $version,
             true
