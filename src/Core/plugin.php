@@ -246,7 +246,9 @@ final class Plugin {
     private function init_hooks(): void {
         add_action( 'init',                  [ $this, 'on_init' ],            10 );
         add_action( 'admin_init',            [ $this, 'on_admin_init' ],      10 );
-        add_action( 'wp_loaded',             [ $this, 'on_wp_loaded' ],       10 );
+        // Short-link redirects need parsed query vars, so template_redirect
+        // (not wp_loaded, which fires before the request is parsed).
+        add_action( 'template_redirect',     [ $this, 'on_wp_loaded' ],       0 );
         add_action( 'rest_api_init',         [ $this, 'on_rest_api_init' ],   10 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ], 10 );
         add_action( 'wp_enqueue_scripts',    [ $this, 'enqueue_public_assets' ], 10 );
@@ -607,8 +609,11 @@ final class Plugin {
      * @return void
      */
     private function add_rewrite_rules(): void {
+        $prefix = get_option( 'seo_campaign_hub_shortener_prefix', 'go' );
+        $prefix = preg_quote( trim( (string) $prefix, '/' ) ?: 'go', '#' );
+
         add_rewrite_rule(
-            '^go/([a-zA-Z0-9_-]+)/?$',
+            '^' . $prefix . '/([a-zA-Z0-9_-]+)/?$',
             'index.php?sch_redirect=1&sch_slug=$matches[1]',
             'top'
         );
@@ -638,8 +643,8 @@ final class Plugin {
             return;
         }
 
-        // Delegate to Redirect Service
-        $this->container->get( 'redirect' )->handle( sanitize_text_field( $slug ) );
+        // Delegate to the Shortener Service, which owns /go/{slug} links
+        $this->container->get( 'shortener' )->handle_redirect( sanitize_text_field( $slug ) );
     }
 
     // =========================================================

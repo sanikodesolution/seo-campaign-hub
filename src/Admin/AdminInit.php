@@ -46,6 +46,11 @@ class AdminInit {
         add_action( 'admin_head',          [ $this, 'add_admin_styles' ] );
         add_action( 'admin_footer',        [ $this, 'add_admin_footer_scripts' ] );
 
+        // URL Shortener page form handlers (admin-post.php)
+        add_action( 'admin_post_sch_shortener_create', [ $this, 'handle_shortener_create' ] );
+        add_action( 'admin_post_sch_shortener_delete', [ $this, 'handle_shortener_delete' ] );
+        add_action( 'admin_post_sch_shortener_toggle', [ $this, 'handle_shortener_toggle' ] );
+
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
             [ $this, 'add_action_links' ]
@@ -166,7 +171,16 @@ class AdminInit {
 
     /** @return void */
     public function render_shortener(): void {
-        $this->render_view( 'shortener', [ 'page_title' => __( 'URL Shortener', 'seo-campaign-hub' ) ] );
+        $shortener = $this->container->get( 'shortener' );
+
+        $this->render_view( 'shortener', [
+            'page_title' => __( 'URL Shortener', 'seo-campaign-hub' ),
+            'links'      => $shortener->get_links( [
+                'is_active' => null, // include inactive links too
+                'limit'     => 100,
+            ] ),
+            'prefix'     => get_option( 'seo_campaign_hub_shortener_prefix', 'go' ),
+        ] );
     }
 
     /** @return void */
@@ -247,6 +261,110 @@ class AdminInit {
             </div>
         </div>
         <?php
+    }
+
+    // =========================================================
+    // URL SHORTENER FORM HANDLERS
+    // =========================================================
+
+    /**
+     * Handle short link creation from the admin form.
+     *
+     * @return void
+     */
+    public function handle_shortener_create(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_shortener_create' );
+
+        $destination = isset( $_POST['destination_url'] ) ? esc_url_raw( wp_unslash( $_POST['destination_url'] ) ) : '';
+        $slug        = isset( $_POST['slug'] ) ? sanitize_title( wp_unslash( $_POST['slug'] ) ) : '';
+
+        if ( empty( $destination ) ) {
+            $this->redirect_to_shortener( [ 'sch_notice' => 'missing_url' ] );
+        }
+
+        $shortener = $this->container->get( 'shortener' );
+
+        if ( ! empty( $slug ) && ! $shortener->is_slug_available( $slug ) ) {
+            $this->redirect_to_shortener( [ 'sch_notice' => 'slug_taken' ] );
+        }
+
+        $data = [];
+        foreach ( [ 'title', 'redirect_type', 'utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content' ] as $field ) {
+            if ( ! empty( $_POST[ $field ] ) ) {
+                $data[ $field ] = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
+            }
+        }
+
+        $short_url = $shortener->shorten_url( $destination, $slug, $data );
+
+        if ( $short_url ) {
+            $this->redirect_to_shortener( [
+                'sch_notice' => 'created',
+                'sch_url'    => rawurlencode( $short_url ),
+            ] );
+        }
+
+        $this->redirect_to_shortener( [ 'sch_notice' => 'create_failed' ] );
+    }
+
+    /**
+     * Handle short link deletion.
+     *
+     * @return void
+     */
+    public function handle_shortener_delete(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+
+        $id = isset( $_GET['link_id'] ) ? absint( $_GET['link_id'] ) : 0;
+        check_admin_referer( 'sch_shortener_delete_' . $id );
+
+        $deleted = $this->container->get( 'shortener' )->delete_link( $id );
+
+        $this->redirect_to_shortener( [ 'sch_notice' => $deleted ? 'deleted' : 'delete_failed' ] );
+    }
+
+    /**
+     * Handle short link activate/deactivate toggle.
+     *
+     * @return void
+     */
+    public function handle_shortener_toggle(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+
+        $id = isset( $_GET['link_id'] ) ? absint( $_GET['link_id'] ) : 0;
+        check_admin_referer( 'sch_shortener_toggle_' . $id );
+
+        $shortener = $this->container->get( 'shortener' );
+        $link      = $shortener->get_link( $id );
+
+        if ( $link ) {
+            $shortener->update_link( $id, [ 'is_active' => $link->is_active ? 0 : 1 ] );
+            $this->redirect_to_shortener( [ 'sch_notice' => 'updated' ] );
+        }
+
+        $this->redirect_to_shortener( [ 'sch_notice' => 'not_found' ] );
+    }
+
+    /**
+     * Redirect back to the URL Shortener admin page.
+     *
+     * @param array<string, string> $args Extra query args.
+     * @return void
+     */
+    private function redirect_to_shortener( array $args = [] ): void {
+        $url = add_query_arg(
+            $args,
+            admin_url( 'admin.php?page=seo-campaign-hub-shortener' )
+        );
+        wp_safe_redirect( $url );
+        exit;
     }
 
     // =========================================================
