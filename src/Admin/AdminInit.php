@@ -51,6 +51,10 @@ class AdminInit {
         add_action( 'admin_post_sch_shortener_delete', [ $this, 'handle_shortener_delete' ] );
         add_action( 'admin_post_sch_shortener_toggle', [ $this, 'handle_shortener_toggle' ] );
 
+        // Import / Export handlers
+        add_action( 'admin_post_sch_export_data', [ $this, 'handle_export_data' ] );
+        add_action( 'admin_post_sch_import_data', [ $this, 'handle_import_data' ] );
+
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
             [ $this, 'add_action_links' ]
@@ -286,12 +290,194 @@ class AdminInit {
 
     /** @return void */
     public function render_import_export(): void {
-        $this->render_view( 'import-export', [ 'page_title' => __( 'Import / Export', 'seo-campaign-hub' ) ] );
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only notice display.
+        $notice  = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+        $message = isset( $_GET['sch_message'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['sch_message'] ) ) ) : '';
+        // phpcs:enable
+
+        $this->render_view( 'import-export', [
+            'page_title' => __( 'Import / Export', 'seo-campaign-hub' ),
+            'notice'     => $notice,
+            'message'    => $message,
+            'counts'     => [
+                'campaigns' => (int) ( wp_count_posts( 'sch_campaign' )->publish ?? 0 )
+                    + (int) ( wp_count_posts( 'sch_campaign' )->draft ?? 0 ),
+                'offers'    => (int) ( wp_count_posts( 'sch_offer' )->publish ?? 0 )
+                    + (int) ( wp_count_posts( 'sch_offer' )->draft ?? 0 ),
+                'links'     => $this->count_short_links(),
+            ],
+        ] );
+    }
+
+    /**
+     * Count short links safely.
+     *
+     * @return int
+     */
+    private function count_short_links(): int {
+        try {
+            $db = $this->container->get( 'database' );
+            if ( ! $db->table_exists( 'links' ) ) {
+                return 0;
+            }
+            return (int) $db->get_table_row_count( 'links' );
+        } catch ( \Throwable $e ) {
+            return 0;
+        }
+    }
+
+    /**
+     * Stream a JSON export download.
+     *
+     * @return void
+     */
+    public function handle_export_data(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_export_data' );
+
+        $type = isset( $_POST['export_type'] ) ? sanitize_key( wp_unslash( $_POST['export_type'] ) ) : 'all';
+        $allowed = [ 'all', 'campaigns', 'offers', 'links', 'analytics', 'settings' ];
+        if ( ! in_array( $type, $allowed, true ) ) {
+            $type = 'all';
+        }
+
+        $service = $this->container->get( 'import_export' );
+        $json    = $service->export_data( $type, [ 'limit' => 1000 ] );
+        $filename = 'seo-campaign-hub-' . $type . '-' . gmdate( 'Y-m-d' ) . '.json';
+
+        nocache_headers();
+        header( 'Content-Type: application/json; charset=utf-8' );
+        header( 'Content-Disposition: attachment; filename="' . $filename . '"' );
+        header( 'Content-Length: ' . strlen( $json ) );
+        echo $json; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- JSON download body.
+        exit;
+    }
+
+    /**
+     * Handle JSON import upload.
+     *
+     * @return void
+     */
+    public function handle_import_data(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_import_data' );
+
+        if ( empty( $_FILES['import_file']['tmp_name'] ) ) {
+            $this->redirect_to_import_export( [ 'sch_notice' => 'missing_file' ] );
+        }
+
+        $file = $_FILES['import_file']; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $size = isset( $file['size'] ) ? (int) $file['size'] : 0;
+        $name = isset( $file['name'] ) ? (string) $file['name'] : '';
+        $tmp  = isset( $file['tmp_name'] ) ? (string) $file['tmp_name'] : '';
+
+        if ( $size <= 0 || $size > 5 * MB_IN_BYTES ) {
+            $this->redirect_to_import_export( [ 'sch_notice' => 'file_too_large' ] );
+        }
+
+        $ext = strtolower( pathinfo( $name, PATHINFO_EXTENSION ) );
+        if ( 'json' !== $ext ) {
+            $this->redirect_to_import_export( [ 'sch_notice' => 'invalid_type' ] );
+        }
+
+        // phpcs:ignore WordPress.WP.AlternativeFunctions.file_get_contents_file_get_contents
+        $json = file_get_contents( $tmp );
+        if ( false === $json || '' === trim( $json ) ) {
+            $this->redirect_to_import_export( [ 'sch_notice' => 'empty_file' ] );
+        }
+
+        $conflict = isset( $_POST['conflict'] ) ? sanitize_key( wp_unslash( $_POST['conflict'] ) ) : 'update';
+        if ( ! in_array( $conflict, [ 'update', 'skip' ], true ) ) {
+            $conflict = 'update';
+        }
+
+        $include_settings = ! empty( $_POST['include_settings'] );
+
+        $service = $this->container->get( 'import_export' );
+        $result  = $service->import_data(
+            $json,
+            [
+                'conflict'         => $conflict,
+                'include_settings' => $include_settings,
+            ]
+        );
+
+        $this->redirect_to_import_export(
+            [
+                'sch_notice'  => ! empty( $result['success'] ) ? 'imported' : 'import_failed',
+                'sch_message' => rawurlencode( (string) ( $result['message'] ?? '' ) ),
+            ]
+        );
+    }
+
+    /**
+     * Redirect back to Import/Export page.
+     *
+     * @param array<string, string> $args Query args.
+     * @return void
+     */
+    private function redirect_to_import_export( array $args = [] ): void {
+        wp_safe_redirect(
+            add_query_arg( $args, admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) )
+        );
+        exit;
     }
 
     /** @return void */
     public function render_help(): void {
-        $this->render_view( 'help', [ 'page_title' => __( 'Help & Support', 'seo-campaign-hub' ) ] );
+        $this->render_view( 'help', [
+            'page_title' => __( 'Help & Support', 'seo-campaign-hub' ),
+            'status'     => $this->get_help_system_status(),
+        ] );
+    }
+
+    /**
+     * Gather safe diagnostics for the Help page.
+     *
+     * @return array<string, mixed>
+     */
+    private function get_help_system_status(): array {
+        global $wp_version;
+
+        $db = null;
+        try {
+            $db = $this->container->get( 'database' );
+        } catch ( \Throwable $e ) {
+            $db = null;
+        }
+
+        $required_tables = [ 'campaigns', 'offers', 'links', 'analytics', 'qr_codes', 'redirects', 'schemas' ];
+        $tables          = [];
+        foreach ( $required_tables as $key ) {
+            $tables[ $key ] = $db ? (bool) $db->table_exists( $key ) : false;
+        }
+
+        $analytics_enabled = true;
+        try {
+            $analytics_enabled = (bool) $this->container->get( 'analytics' )->is_enabled();
+        } catch ( \Throwable $e ) {
+            $analytics_enabled = (bool) get_option( 'seo_campaign_hub_enable_analytics', true );
+        }
+
+        return [
+            'plugin_version'     => defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '',
+            'wp_version'         => (string) $wp_version,
+            'php_version'        => PHP_VERSION,
+            'php_ok'             => version_compare( PHP_VERSION, '8.2.0', '>=' ),
+            'wp_ok'              => version_compare( (string) $wp_version, '6.0.0', '>=' ),
+            'tables'             => $tables,
+            'tables_ok'          => ! in_array( false, $tables, true ),
+            'shortener_prefix'   => (string) get_option( 'seo_campaign_hub_shortener_prefix', 'go' ),
+            'shortener_enabled'  => (bool) get_option( 'seo_campaign_hub_enable_shortener', true ),
+            'analytics_enabled'  => $analytics_enabled,
+            'elementor_active'   => did_action( 'elementor/loaded' ) || class_exists( '\Elementor\Plugin' ),
+            'permalink_structure'=> (string) get_option( 'permalink_structure', '' ),
+            'pretty_permalinks'  => (string) get_option( 'permalink_structure', '' ) !== '',
+        ];
     }
 
     // =========================================================

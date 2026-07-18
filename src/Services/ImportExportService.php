@@ -2,671 +2,598 @@
 /**
  * Import/Export Service
  *
+ * CPT-aware JSON backup and restore for campaigns, offers, links, and settings.
+ *
  * @package SEO_Campaign_Hub\Services
  */
 
 namespace SEO_Campaign_Hub\Services;
 
-if (!defined('ABSPATH')) {
-    exit;
+if ( ! defined( 'ABSPATH' ) ) {
+	exit;
 }
 
 /**
  * Class ImportExportService
- *
- * Handles import and export operations
  */
 class ImportExportService {
-    /**
-     * Database instance
-     *
-     * @var \SEO_Campaign_Hub\Database\Database
-     */
-    private $db;
-
-    /**
-     * Constructor
-     */
-    public function __construct() {
-        $this->db = new \SEO_Campaign_Hub\Database\Database();
-    }
-
-    /**
-     * Export data
-     *
-     * @param string $type Export type (all, campaigns, offers, links, analytics, settings)
-     * @param array  $args Export arguments
-     * @return array|string
-     */
-    public function export_data($type = 'all', $args = []) {
-        $data = [];
-
-        switch ($type) {
-            case 'campaigns':
-                $data['campaigns'] = $this->export_campaigns($args);
-                break;
-            
-            case 'offers':
-                $data['offers'] = $this->export_offers($args);
-                break;
-            
-            case 'links':
-                $data['links'] = $this->export_links($args);
-                break;
-            
-            case 'analytics':
-                $data['analytics'] = $this->export_analytics($args);
-                break;
-            
-            case 'settings':
-                $data['settings'] = $this->export_settings();
-                break;
-            
-            case 'all':
-            default:
-                $data = [
-                    'campaigns' => $this->export_campaigns($args),
-                    'offers' => $this->export_offers($args),
-                    'links' => $this->export_links($args),
-                    'settings' => $this->export_settings(),
-                    'exported_at' => current_time('mysql'),
-                    'version' => SEO_CAMPAIGN_HUB_VERSION
-                ];
-                break;
-        }
-
-        // Return as JSON
-        return wp_json_encode($data, JSON_PRETTY_PRINT);
-    }
-
-    /**
-     * Export campaigns
-     *
-     * @param array $args Export arguments
-     * @return array
-     */
-    private function export_campaigns($args = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_campaigns';
-        
-        $where = [];
-        if (!empty($args['status'])) {
-            $where[] = $wpdb->prepare("status = %s", $args['status']);
-        }
-        if (!empty($args['campaign_type'])) {
-            $where[] = $wpdb->prepare("campaign_type = %s", $args['campaign_type']);
-        }
-        
-        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        $campaigns = $wpdb->get_results(
-            "SELECT * FROM {$table} {$where_clause} ORDER BY id ASC",
-            ARRAY_A
-        );
-
-        // Get related offers
-        $campaign_offers_table = $wpdb->prefix . 'sch_campaign_offers';
-        foreach ($campaigns as &$campaign) {
-            $campaign['offers'] = $wpdb->get_results(
-                $wpdb->prepare(
-                    "SELECT * FROM {$campaign_offers_table} WHERE campaign_id = %d",
-                    $campaign['id']
-                ),
-                ARRAY_A
-            );
-        }
-
-        return $campaigns;
-    }
-
-    /**
-     * Export offers
-     *
-     * @param array $args Export arguments
-     * @return array
-     */
-    private function export_offers($args = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_offers';
-        
-        $where = [];
-        if (!empty($args['status'])) {
-            $where[] = $wpdb->prepare("status = %s", $args['status']);
-        }
-        if (!empty($args['offer_type'])) {
-            $where[] = $wpdb->prepare("offer_type = %s", $args['offer_type']);
-        }
-        
-        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        return $wpdb->get_results(
-            "SELECT * FROM {$table} {$where_clause} ORDER BY id ASC",
-            ARRAY_A
-        );
-    }
-
-    /**
-     * Export links
-     *
-     * @param array $args Export arguments
-     * @return array
-     */
-    private function export_links($args = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_links';
-        
-        $where = [];
-        if (isset($args['is_active'])) {
-            $where[] = $wpdb->prepare("is_active = %d", intval($args['is_active']));
-        }
-        if (!empty($args['link_type'])) {
-            $where[] = $wpdb->prepare("link_type = %s", $args['link_type']);
-        }
-        
-        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        return $wpdb->get_results(
-            "SELECT * FROM {$table} {$where_clause} ORDER BY id ASC",
-            ARRAY_A
-        );
-    }
-
-    /**
-     * Export analytics
-     *
-     * @param array $args Export arguments
-     * @return array
-     */
-    private function export_analytics($args = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_analytics';
-        
-        $where = [];
-        if (!empty($args['start_date'])) {
-            $where[] = $wpdb->prepare("created_at >= %s", $args['start_date']);
-        }
-        if (!empty($args['end_date'])) {
-            $where[] = $wpdb->prepare("created_at <= %s", $args['end_date']);
-        }
-        if (!empty($args['event_type'])) {
-            $where[] = $wpdb->prepare("event_type = %s", $args['event_type']);
-        }
-        
-        $where_clause = !empty($where) ? 'WHERE ' . implode(' AND ', $where) : '';
-        
-        $limit = isset($args['limit']) ? 'LIMIT ' . intval($args['limit']) : '';
-        
-        return $wpdb->get_results(
-            "SELECT * FROM {$table} {$where_clause} ORDER BY created_at DESC {$limit}",
-            ARRAY_A
-        );
-    }
-
-    /**
-     * Export settings
-     *
-     * @return array
-     */
-    private function export_settings() {
-        $settings = [];
-        $options = [
-            'seo_campaign_hub_version',
-            'seo_campaign_hub_db_version',
-            'seo_campaign_hub_options'
-        ];
-
-        foreach ($options as $option) {
-            $settings[$option] = get_option($option);
-        }
-
-        return $settings;
-    }
-
-    /**
-     * Import data
-     *
-     * @param string $data JSON data to import
-     * @param array  $args Import arguments
-     * @return array
-     */
-    public function import_data($data, $args = []) {
-        $data = json_decode($data, true);
-        
-        if (!is_array($data)) {
-            return [
-                'success' => false,
-                'message' => __('Invalid data format.', 'seo-campaign-hub')
-            ];
-        }
-
-        $results = [
-            'imported' => 0,
-            'failed' => 0,
-            'errors' => []
-        ];
-
-        // Import campaigns
-        if (isset($data['campaigns'])) {
-            $this->import_campaigns($data['campaigns'], $args, $results);
-        }
-
-        // Import offers
-        if (isset($data['offers'])) {
-            $this->import_offers($data['offers'], $args, $results);
-        }
-
-        // Import links
-        if (isset($data['links'])) {
-            $this->import_links($data['links'], $args, $results);
-        }
-
-        // Import settings
-        if (isset($data['settings'])) {
-            $this->import_settings($data['settings'], $results);
-        }
-
-        return $results;
-    }
-
-    /**
-     * Import campaigns
-     *
-     * @param array $campaigns Campaigns to import
-     * @param array $args Import arguments
-     * @param array $results Results reference
-     * @return void
-     */
-    private function import_campaigns($campaigns, $args, &$results) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_campaigns';
-        $post_type = 'sch_campaign';
-
-        foreach ($campaigns as $campaign) {
-            // Check if campaign already exists by key
-            $exists = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT id FROM {$table} WHERE campaign_key = %s",
-                    $campaign['campaign_key']
-                )
-            );
-
-            if ($exists) {
-                // Update existing campaign
-                $campaign_data = $campaign;
-                unset($campaign_data['id']);
-                unset($campaign_data['created_at']);
-                unset($campaign_data['updated_at']);
-                
-                $result = $wpdb->update($table, $campaign_data, ['id' => $exists]);
-                if ($result !== false) {
-                    $results['imported']++;
-                } else {
-                    $results['failed']++;
-                    $results['errors'][] = sprintf(
-                        __('Failed to update campaign: %s', 'seo-campaign-hub'),
-                        $campaign['title']
-                    );
-                }
-                continue;
-            }
-
-            // Create WordPress post
-            $post_data = [
-                'post_title' => $campaign['title'],
-                'post_content' => $campaign['content'] ?? '',
-                'post_excerpt' => $campaign['excerpt'] ?? '',
-                'post_status' => $campaign['status'] ?? 'draft',
-                'post_type' => $post_type
-            ];
-
-            $post_id = wp_insert_post($post_data);
-
-            if (is_wp_error($post_id)) {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    __('Failed to create post for campaign: %s', 'seo-campaign-hub'),
-                    $campaign['title']
-                );
-                continue;
-            }
-
-            // Insert campaign data
-            $campaign_data = $campaign;
-            $campaign_data['post_id'] = $post_id;
-            unset($campaign_data['id']);
-            unset($campaign_data['created_at']);
-            unset($campaign_data['updated_at']);
-
-            $result = $wpdb->insert($table, $campaign_data);
-
-            if ($result) {
-                $results['imported']++;
-                
-                // Import campaign offers if present
-                if (!empty($campaign['offers'])) {
-                    $this->import_campaign_offers($campaign['offers'], $wpdb->insert_id);
-                }
-            } else {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    __('Failed to insert campaign: %s', 'seo-campaign-hub'),
-                    $campaign['title']
-                );
-            }
-        }
-    }
-
-    /**
-     * Import campaign offers
-     *
-     * @param array $offers Offers to import
-     * @param int   $campaign_id Campaign ID
-     * @return void
-     */
-    private function import_campaign_offers($offers, $campaign_id) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_campaign_offers';
-
-        foreach ($offers as $offer) {
-            $offer['campaign_id'] = $campaign_id;
-            unset($offer['id']);
-            unset($offer['created_at']);
-            unset($offer['updated_at']);
-
-            $wpdb->insert($table, $offer);
-        }
-    }
-
-    /**
-     * Import offers
-     *
-     * @param array $offers Offers to import
-     * @param array $args Import arguments
-     * @param array $results Results reference
-     * @return void
-     */
-    private function import_offers($offers, $args, &$results) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_offers';
-        $post_type = 'sch_offer';
-
-        foreach ($offers as $offer) {
-            // Check if offer already exists by key
-            $exists = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT id FROM {$table} WHERE offer_key = %s",
-                    $offer['offer_key']
-                )
-            );
-
-            if ($exists) {
-                // Update existing offer
-                $offer_data = $offer;
-                unset($offer_data['id']);
-                unset($offer_data['created_at']);
-                unset($offer_data['updated_at']);
-                
-                $result = $wpdb->update($table, $offer_data, ['id' => $exists]);
-                if ($result !== false) {
-                    $results['imported']++;
-                } else {
-                    $results['failed']++;
-                    $results['errors'][] = sprintf(
-                        __('Failed to update offer: %s', 'seo-campaign-hub'),
-                        $offer['title']
-                    );
-                }
-                continue;
-            }
-
-            // Create WordPress post
-            $post_data = [
-                'post_title' => $offer['title'],
-                'post_content' => $offer['description'] ?? '',
-                'post_excerpt' => $offer['short_description'] ?? '',
-                'post_status' => $offer['status'] ?? 'draft',
-                'post_type' => $post_type
-            ];
-
-            $post_id = wp_insert_post($post_data);
-
-            if (is_wp_error($post_id)) {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    __('Failed to create post for offer: %s', 'seo-campaign-hub'),
-                    $offer['title']
-                );
-                continue;
-            }
-
-            // Insert offer data
-            $offer_data = $offer;
-            $offer_data['post_id'] = $post_id;
-            unset($offer_data['id']);
-            unset($offer_data['created_at']);
-            unset($offer_data['updated_at']);
-
-            $result = $wpdb->insert($table, $offer_data);
-
-            if ($result) {
-                $results['imported']++;
-            } else {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    __('Failed to insert offer: %s', 'seo-campaign-hub'),
-                    $offer['title']
-                );
-            }
-        }
-    }
-
-    /**
-     * Import links
-     *
-     * @param array $links Links to import
-     * @param array $args Import arguments
-     * @param array $results Results reference
-     * @return void
-     */
-    private function import_links($links, $args, &$results) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_links';
-
-        foreach ($links as $link) {
-            // Check if link already exists by key
-            $exists = $wpdb->get_var(
-                $wpdb->prepare(
-                    "SELECT id FROM {$table} WHERE link_key = %s",
-                    $link['link_key']
-                )
-            );
-
-            if ($exists) {
-                // Update existing link
-                $link_data = $link;
-                unset($link_data['id']);
-                unset($link_data['created_at']);
-                unset($link_data['updated_at']);
-                
-                $result = $wpdb->update($table, $link_data, ['id' => $exists]);
-                if ($result !== false) {
-                    $results['imported']++;
-                } else {
-                    $results['failed']++;
-                    $results['errors'][] = sprintf(
-                        __('Failed to update link: %s', 'seo-campaign-hub'),
-                        $link['slug']
-                    );
-                }
-                continue;
-            }
-
-            // Insert link data
-            $link_data = $link;
-            unset($link_data['id']);
-            unset($link_data['created_at']);
-            unset($link_data['updated_at']);
-
-            $result = $wpdb->insert($table, $link_data);
-
-            if ($result) {
-                $results['imported']++;
-            } else {
-                $results['failed']++;
-                $results['errors'][] = sprintf(
-                    __('Failed to insert link: %s', 'seo-campaign-hub'),
-                    $link['slug']
-                );
-            }
-        }
-    }
-
-    /**
-     * Import settings
-     *
-     * @param array $settings Settings to import
-     * @param array $results Results reference
-     * @return void
-     */
-    private function import_settings($settings, &$results) {
-        foreach ($settings as $key => $value) {
-            if (strpos($key, 'seo_campaign_hub_') === 0) {
-                update_option($key, $value);
-            }
-        }
-        $results['imported']++;
-    }
-
-    /**
-     * Generate export file
-     *
-     * @param string $data Data to export
-     * @param string $format File format (json, csv)
-     * @param string $filename Custom filename
-     * @return string|false
-     */
-    public function generate_export_file($data, $format = 'json', $filename = '') {
-        $export_dir = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'uploads/exports/';
-        
-        if (!file_exists($export_dir)) {
-            wp_mkdir_p($export_dir);
-        }
-
-        if (empty($filename)) {
-            $filename = 'export_' . date('Y-m-d_H-i-s');
-        }
-
-        $filepath = $export_dir . $filename . '.' . $format;
-
-        switch ($format) {
-            case 'json':
-                file_put_contents($filepath, $data);
-                break;
-            
-            case 'csv':
-                $this->convert_to_csv($data, $filepath);
-                break;
-            
-            default:
-                return false;
-        }
-
-        return $filepath;
-    }
-
-    /**
-     * Convert data to CSV
-     *
-     * @param string $data JSON data
-     * @param string $filepath Output file path
-     * @return void
-     */
-    private function convert_to_csv($data, $filepath) {
-        $data = json_decode($data, true);
-        
-        if (!is_array($data)) {
-            return;
-        }
-
-        $handle = fopen($filepath, 'w');
-
-        // Flatten nested arrays
-        $flat_data = [];
-        foreach ($data as $key => $value) {
-            if (is_array($value)) {
-                foreach ($value as $item) {
-                    if (is_array($item)) {
-                        $flat_data[] = array_merge(['type' => $key], $item);
-                    }
-                }
-            } else {
-                $flat_data[] = ['type' => $key, 'value' => $value];
-            }
-        }
-
-        if (!empty($flat_data)) {
-            // Write headers
-            $headers = array_keys($flat_data[0]);
-            fputcsv($handle, $headers);
-
-            // Write data
-            foreach ($flat_data as $row) {
-                fputcsv($handle, $row);
-            }
-        }
-
-        fclose($handle);
-    }
-
-    /**
-     * Get import/export logs
-     *
-     * @param int $limit Number of logs
-     * @return array
-     */
-    public function get_logs($limit = 20) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_export_logs';
-
-        return $wpdb->get_results(
-            $wpdb->prepare(
-                "SELECT * FROM {$table} ORDER BY created_at DESC LIMIT %d",
-                $limit
-            ),
-            ARRAY_A
-        );
-    }
-
-    /**
-     * Log import/export activity
-     *
-     * @param string $type Log type (import, export)
-     * @param string $format File format
-     * @param int    $records Number of records
-     * @param string $status Status (success, failed)
-     * @param array  $meta Additional metadata
-     * @return int|false
-     */
-    public function log_activity($type, $format, $records, $status = 'success', $meta = []) {
-        global $wpdb;
-        $table = $wpdb->prefix . 'sch_export_logs';
-
-        $data = [
-            'log_key' => 'log_' . uniqid(),
-            'export_type' => $type,
-            'format' => $format,
-            'total_records' => $records,
-            'exported_records' => $records,
-            'status' => $status,
-            'meta_data' => wp_json_encode($meta),
-            'created_by' => get_current_user_id(),
-            'created_at' => current_time('mysql')
-        ];
-
-        if ($status === 'completed') {
-            $data['completed_at'] = current_time('mysql');
-        }
-
-        return $wpdb->insert($table, $data);
-    }
+
+	/**
+	 * Allowed export/import type keys.
+	 *
+	 * @var string[]
+	 */
+	private $types = [ 'all', 'campaigns', 'offers', 'links', 'analytics', 'settings' ];
+
+	/**
+	 * Settings option keys that may be imported.
+	 *
+	 * @var string[]
+	 */
+	private $settings_whitelist = [
+		'seo_campaign_hub_enable_analytics',
+		'seo_campaign_hub_ignore_bots',
+		'seo_campaign_hub_anonymize_ip',
+		'seo_campaign_hub_enable_shortener',
+		'seo_campaign_hub_shortener_prefix',
+		'seo_campaign_hub_shortener_slug_length',
+		'seo_campaign_hub_default_redirect_type',
+		'seo_campaign_hub_analytics_retention',
+		'seo_campaign_hub_analytics_retention_days',
+		'seo_campaign_hub_enable_qr_codes',
+		'seo_campaign_hub_enable_schema',
+		'seo_campaign_hub_options',
+	];
+
+	/**
+	 * Export data as pretty JSON string.
+	 *
+	 * @param string               $type Export type.
+	 * @param array<string, mixed> $args Extra args (e.g. analytics limit).
+	 * @return string
+	 */
+	public function export_data( $type = 'all', $args = [] ) {
+		$type = $this->normalize_type( $type );
+		$data = [
+			'format'      => 'seo-campaign-hub-backup',
+			'version'     => defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '1.0.0',
+			'exported_at' => current_time( 'mysql' ),
+			'site_url'    => home_url( '/' ),
+		];
+
+		switch ( $type ) {
+			case 'campaigns':
+				$data['campaigns'] = $this->export_campaign_posts();
+				break;
+			case 'offers':
+				$data['offers'] = $this->export_offer_posts();
+				break;
+			case 'links':
+				$data['links'] = $this->export_links();
+				break;
+			case 'analytics':
+				$data['analytics'] = $this->export_analytics( $args );
+				break;
+			case 'settings':
+				$data['settings'] = $this->export_settings();
+				break;
+			case 'all':
+			default:
+				$data['campaigns'] = $this->export_campaign_posts();
+				$data['offers']    = $this->export_offer_posts();
+				$data['links']     = $this->export_links();
+				$data['settings']  = $this->export_settings();
+				break;
+		}
+
+		return wp_json_encode( $data, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES );
+	}
+
+	/**
+	 * Import JSON backup string.
+	 *
+	 * @param string               $json JSON payload.
+	 * @param array<string, mixed> $args Import args: conflict=update|skip, include_settings=bool.
+	 * @return array<string, mixed>
+	 */
+	public function import_data( $json, $args = [] ) {
+		$data = json_decode( (string) $json, true );
+
+		if ( ! is_array( $data ) ) {
+			return [
+				'success'  => false,
+				'imported' => 0,
+				'updated'  => 0,
+				'skipped'  => 0,
+				'failed'   => 0,
+				'errors'   => [ __( 'Invalid JSON data format.', 'seo-campaign-hub' ) ],
+				'message'  => __( 'Invalid JSON data format.', 'seo-campaign-hub' ),
+			];
+		}
+
+		$args = wp_parse_args(
+			$args,
+			[
+				'conflict'         => 'update',
+				'include_settings' => false,
+			]
+		);
+
+		$results = [
+			'success'  => true,
+			'imported' => 0,
+			'updated'  => 0,
+			'skipped'  => 0,
+			'failed'   => 0,
+			'errors'   => [],
+		];
+
+		if ( ! empty( $data['campaigns'] ) && is_array( $data['campaigns'] ) ) {
+			$this->import_campaign_posts( $data['campaigns'], $args, $results );
+		}
+
+		if ( ! empty( $data['offers'] ) && is_array( $data['offers'] ) ) {
+			$this->import_offer_posts( $data['offers'], $args, $results );
+		}
+
+		if ( ! empty( $data['links'] ) && is_array( $data['links'] ) ) {
+			$this->import_links( $data['links'], $args, $results );
+		}
+
+		if ( ! empty( $args['include_settings'] ) && ! empty( $data['settings'] ) && is_array( $data['settings'] ) ) {
+			$this->import_settings( $data['settings'], $results );
+		}
+
+		$results['message'] = sprintf(
+			/* translators: 1: imported, 2: updated, 3: skipped, 4: failed */
+			__( 'Import finished. Imported: %1$d, Updated: %2$d, Skipped: %3$d, Failed: %4$d.', 'seo-campaign-hub' ),
+			$results['imported'],
+			$results['updated'],
+			$results['skipped'],
+			$results['failed']
+		);
+
+		return $results;
+	}
+
+	/**
+	 * Export campaign CPT posts.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function export_campaign_posts() {
+		$posts = get_posts(
+			[
+				'post_type'      => 'sch_campaign',
+				'post_status'    => [ 'publish', 'draft', 'pending', 'private', 'future' ],
+				'posts_per_page' => -1,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+			]
+		);
+
+		$out = [];
+		foreach ( $posts as $post ) {
+			$out[] = [
+				'type'         => 'sch_campaign',
+				'title'        => $post->post_title,
+				'slug'         => $post->post_name,
+				'content'      => $post->post_content,
+				'excerpt'      => $post->post_excerpt,
+				'status'       => $post->post_status,
+				'categories'   => wp_get_post_terms( $post->ID, 'sch_campaign_category', [ 'fields' => 'names' ] ),
+				'tags'         => wp_get_post_terms( $post->ID, 'sch_campaign_tag', [ 'fields' => 'names' ] ),
+				'featured_url' => get_the_post_thumbnail_url( $post->ID, 'full' ) ?: '',
+			];
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Export offer CPT posts.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function export_offer_posts() {
+		$posts = get_posts(
+			[
+				'post_type'      => 'sch_offer',
+				'post_status'    => [ 'publish', 'draft', 'pending', 'private', 'future' ],
+				'posts_per_page' => -1,
+				'orderby'        => 'ID',
+				'order'          => 'ASC',
+			]
+		);
+
+		$out = [];
+		foreach ( $posts as $post ) {
+			$out[] = [
+				'type'         => 'sch_offer',
+				'title'        => $post->post_title,
+				'slug'         => $post->post_name,
+				'content'      => $post->post_content,
+				'excerpt'      => $post->post_excerpt,
+				'status'       => $post->post_status,
+				'categories'   => wp_get_post_terms( $post->ID, 'sch_offer_category', [ 'fields' => 'names' ] ),
+				'featured_url' => get_the_post_thumbnail_url( $post->ID, 'full' ) ?: '',
+			];
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Export short links from custom table.
+	 *
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function export_links() {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sch_links';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return [];
+		}
+
+		$rows = $wpdb->get_results( "SELECT * FROM {$table} ORDER BY id ASC", ARRAY_A ); // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+		if ( ! is_array( $rows ) ) {
+			return [];
+		}
+
+		$out = [];
+		foreach ( $rows as $row ) {
+			$out[] = [
+				'link_key'         => $row['link_key'] ?? '',
+				'slug'             => $row['slug'] ?? '',
+				'destination_url'  => $row['destination_url'] ?? '',
+				'short_url'        => $row['short_url'] ?? '',
+				'title'            => $row['title'] ?? '',
+				'description'      => $row['description'] ?? '',
+				'link_type'        => $row['link_type'] ?? 'direct',
+				'redirect_type'    => $row['redirect_type'] ?? '301',
+				'is_active'        => isset( $row['is_active'] ) ? (int) $row['is_active'] : 1,
+				'is_public'        => isset( $row['is_public'] ) ? (int) $row['is_public'] : 1,
+				'utm_source'       => $row['utm_source'] ?? '',
+				'utm_medium'       => $row['utm_medium'] ?? '',
+				'utm_campaign'     => $row['utm_campaign'] ?? '',
+				'utm_term'         => $row['utm_term'] ?? '',
+				'utm_content'      => $row['utm_content'] ?? '',
+				'campaign_id'      => $row['campaign_id'] ?? null,
+				'offer_id'         => $row['offer_id'] ?? null,
+				'expires_at'       => $row['expires_at'] ?? null,
+			];
+		}
+
+		return $out;
+	}
+
+	/**
+	 * Export analytics rows (export-only).
+	 *
+	 * @param array<string, mixed> $args Args.
+	 * @return array<int, array<string, mixed>>
+	 */
+	private function export_analytics( $args = [] ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sch_analytics';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			return [];
+		}
+
+		$limit = isset( $args['limit'] ) ? max( 1, min( 5000, (int) $args['limit'] ) ) : 1000;
+
+		return $wpdb->get_results(
+			$wpdb->prepare(
+				"SELECT event_type, event_name, campaign_id, offer_id, link_id, post_id, landing_page,
+					device_type, utm_source, utm_medium, utm_campaign, time_on_page, scroll_depth,
+					conversion_amount, created_at
+				FROM {$table}
+				ORDER BY created_at DESC
+				LIMIT %d",
+				$limit
+			),
+			ARRAY_A
+		) ?: [];
+	}
+
+	/**
+	 * Export allowlisted settings.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function export_settings() {
+		$settings = [];
+		foreach ( $this->settings_whitelist as $option ) {
+			$value = get_option( $option, null );
+			if ( null !== $value ) {
+				$settings[ $option ] = $value;
+			}
+		}
+		return $settings;
+	}
+
+	/**
+	 * Import campaign posts.
+	 *
+	 * @param array                $items   Items.
+	 * @param array<string, mixed> $args    Args.
+	 * @param array<string, mixed> $results Results ref.
+	 * @return void
+	 */
+	private function import_campaign_posts( $items, $args, &$results ) {
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$this->upsert_post(
+				'sch_campaign',
+				$item,
+				[
+					'category_tax' => 'sch_campaign_category',
+					'tag_tax'      => 'sch_campaign_tag',
+				],
+				$args,
+				$results
+			);
+		}
+	}
+
+	/**
+	 * Import offer posts.
+	 *
+	 * @param array                $items   Items.
+	 * @param array<string, mixed> $args    Args.
+	 * @param array<string, mixed> $results Results ref.
+	 * @return void
+	 */
+	private function import_offer_posts( $items, $args, &$results ) {
+		foreach ( $items as $item ) {
+			if ( ! is_array( $item ) ) {
+				continue;
+			}
+			$this->upsert_post(
+				'sch_offer',
+				$item,
+				[
+					'category_tax' => 'sch_offer_category',
+				],
+				$args,
+				$results
+			);
+		}
+	}
+
+	/**
+	 * Create or update a CPT from backup item.
+	 *
+	 * @param string               $post_type Post type.
+	 * @param array<string, mixed> $item      Item.
+	 * @param array<string, mixed> $tax_map   Taxonomy map.
+	 * @param array<string, mixed> $args      Import args.
+	 * @param array<string, mixed> $results   Results ref.
+	 * @return void
+	 */
+	private function upsert_post( $post_type, $item, $tax_map, $args, &$results ) {
+		$title   = sanitize_text_field( (string) ( $item['title'] ?? $item['post_title'] ?? '' ) );
+		$slug    = sanitize_title( (string) ( $item['slug'] ?? $item['post_name'] ?? $title ) );
+		$content = wp_kses_post( (string) ( $item['content'] ?? $item['post_content'] ?? $item['description'] ?? '' ) );
+		$excerpt = sanitize_textarea_field( (string) ( $item['excerpt'] ?? $item['post_excerpt'] ?? $item['short_description'] ?? '' ) );
+		$status  = sanitize_key( (string) ( $item['status'] ?? $item['post_status'] ?? 'draft' ) );
+
+		$allowed_status = [ 'publish', 'draft', 'pending', 'private', 'future' ];
+		if ( ! in_array( $status, $allowed_status, true ) ) {
+			$status = 'draft';
+		}
+
+		if ( '' === $title ) {
+			$results['failed']++;
+			$results['errors'][] = __( 'Skipped an item with empty title.', 'seo-campaign-hub' );
+			return;
+		}
+
+		$existing = $slug ? get_page_by_path( $slug, OBJECT, $post_type ) : null;
+
+		if ( $existing instanceof \WP_Post ) {
+			if ( ( $args['conflict'] ?? 'update' ) === 'skip' ) {
+				$results['skipped']++;
+				return;
+			}
+
+			$post_id = wp_update_post(
+				[
+					'ID'           => $existing->ID,
+					'post_title'   => $title,
+					'post_content' => $content,
+					'post_excerpt' => $excerpt,
+					'post_status'  => $status,
+					'post_name'    => $slug,
+				],
+				true
+			);
+
+			if ( is_wp_error( $post_id ) ) {
+				$results['failed']++;
+				$results['errors'][] = $post_id->get_error_message();
+				return;
+			}
+
+			$this->assign_terms( $post_id, $item, $tax_map );
+			$results['updated']++;
+			return;
+		}
+
+		$post_id = wp_insert_post(
+			[
+				'post_title'   => $title,
+				'post_content' => $content,
+				'post_excerpt' => $excerpt,
+				'post_status'  => $status,
+				'post_type'    => $post_type,
+				'post_name'    => $slug,
+			],
+			true
+		);
+
+		if ( is_wp_error( $post_id ) ) {
+			$results['failed']++;
+			$results['errors'][] = $post_id->get_error_message();
+			return;
+		}
+
+		$this->assign_terms( $post_id, $item, $tax_map );
+		$results['imported']++;
+	}
+
+	/**
+	 * Assign taxonomy terms from backup item.
+	 *
+	 * @param int                  $post_id Post ID.
+	 * @param array<string, mixed> $item    Item.
+	 * @param array<string, mixed> $tax_map Tax map.
+	 * @return void
+	 */
+	private function assign_terms( $post_id, $item, $tax_map ) {
+		if ( ! empty( $tax_map['category_tax'] ) && ! empty( $item['categories'] ) && is_array( $item['categories'] ) ) {
+			$names = array_map( 'sanitize_text_field', $item['categories'] );
+			wp_set_object_terms( $post_id, $names, $tax_map['category_tax'], false );
+		}
+		if ( ! empty( $tax_map['tag_tax'] ) && ! empty( $item['tags'] ) && is_array( $item['tags'] ) ) {
+			$names = array_map( 'sanitize_text_field', $item['tags'] );
+			wp_set_object_terms( $post_id, $names, $tax_map['tag_tax'], false );
+		}
+	}
+
+	/**
+	 * Import short links.
+	 *
+	 * @param array                $links   Links.
+	 * @param array<string, mixed> $args    Args.
+	 * @param array<string, mixed> $results Results ref.
+	 * @return void
+	 */
+	private function import_links( $links, $args, &$results ) {
+		global $wpdb;
+		$table = $wpdb->prefix . 'sch_links';
+
+		if ( $wpdb->get_var( $wpdb->prepare( 'SHOW TABLES LIKE %s', $table ) ) !== $table ) {
+			$results['failed']++;
+			$results['errors'][] = __( 'Short links table is missing. Reactivate the plugin.', 'seo-campaign-hub' );
+			return;
+		}
+
+		$prefix = get_option( 'seo_campaign_hub_shortener_prefix', 'go' );
+
+		foreach ( $links as $link ) {
+			if ( ! is_array( $link ) ) {
+				continue;
+			}
+
+			$destination = esc_url_raw( (string) ( $link['destination_url'] ?? '' ) );
+			$slug        = sanitize_title( (string) ( $link['slug'] ?? '' ) );
+
+			if ( '' === $destination || '' === $slug ) {
+				$results['failed']++;
+				$results['errors'][] = __( 'Skipped a link with missing URL or slug.', 'seo-campaign-hub' );
+				continue;
+			}
+
+			$link_key = sanitize_text_field( (string) ( $link['link_key'] ?? '' ) );
+			if ( '' === $link_key ) {
+				$link_key = 'link_' . uniqid();
+			}
+
+			$existing_id = $wpdb->get_var(
+				$wpdb->prepare(
+					"SELECT id FROM {$table} WHERE slug = %s OR link_key = %s LIMIT 1",
+					$slug,
+					$link_key
+				)
+			);
+
+			$row = [
+				'link_key'        => $link_key,
+				'slug'            => $slug,
+				'destination_url' => $destination,
+				'short_url'       => home_url( '/' . $prefix . '/' . $slug ),
+				'title'           => sanitize_text_field( (string) ( $link['title'] ?? '' ) ),
+				'description'     => sanitize_textarea_field( (string) ( $link['description'] ?? '' ) ),
+				'link_type'       => sanitize_key( (string) ( $link['link_type'] ?? 'direct' ) ),
+				'redirect_type'   => in_array( (string) ( $link['redirect_type'] ?? '301' ), [ '301', '302', '307' ], true )
+					? (string) $link['redirect_type']
+					: '301',
+				'is_active'       => ! empty( $link['is_active'] ) ? 1 : 0,
+				'is_public'       => isset( $link['is_public'] ) ? (int) (bool) $link['is_public'] : 1,
+				'utm_source'      => sanitize_text_field( (string) ( $link['utm_source'] ?? '' ) ),
+				'utm_medium'      => sanitize_text_field( (string) ( $link['utm_medium'] ?? '' ) ),
+				'utm_campaign'    => sanitize_text_field( (string) ( $link['utm_campaign'] ?? '' ) ),
+				'utm_term'        => sanitize_text_field( (string) ( $link['utm_term'] ?? '' ) ),
+				'utm_content'     => sanitize_text_field( (string) ( $link['utm_content'] ?? '' ) ),
+				'created_by'      => get_current_user_id() ?: 1,
+			];
+
+			if ( $existing_id ) {
+				if ( ( $args['conflict'] ?? 'update' ) === 'skip' ) {
+					$results['skipped']++;
+					continue;
+				}
+				$updated = $wpdb->update( $table, $row, [ 'id' => (int) $existing_id ] );
+				if ( false === $updated ) {
+					$results['failed']++;
+					$results['errors'][] = sprintf(
+						/* translators: %s: slug */
+						__( 'Failed to update link: %s', 'seo-campaign-hub' ),
+						$slug
+					);
+				} else {
+					$results['updated']++;
+				}
+				continue;
+			}
+
+			$inserted = $wpdb->insert( $table, $row );
+			if ( $inserted ) {
+				$results['imported']++;
+			} else {
+				$results['failed']++;
+				$results['errors'][] = sprintf(
+					/* translators: %s: slug */
+					__( 'Failed to insert link: %s', 'seo-campaign-hub' ),
+					$slug
+				);
+			}
+		}
+	}
+
+	/**
+	 * Import allowlisted settings.
+	 *
+	 * @param array                $settings Settings.
+	 * @param array<string, mixed> $results  Results ref.
+	 * @return void
+	 */
+	private function import_settings( $settings, &$results ) {
+		$count = 0;
+		foreach ( $settings as $key => $value ) {
+			$key = (string) $key;
+			if ( ! in_array( $key, $this->settings_whitelist, true ) ) {
+				continue;
+			}
+			update_option( $key, $value );
+			$count++;
+		}
+		if ( $count > 0 ) {
+			$results['imported'] += $count;
+		}
+	}
+
+	/**
+	 * @param string $type Type.
+	 * @return string
+	 */
+	private function normalize_type( $type ) {
+		$type = sanitize_key( (string) $type );
+		return in_array( $type, $this->types, true ) ? $type : 'all';
+	}
 }
