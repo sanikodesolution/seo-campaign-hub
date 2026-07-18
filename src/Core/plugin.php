@@ -705,10 +705,18 @@ final class Plugin {
         $version = SEO_CAMPAIGN_HUB_VERSION;
         $url     = SEO_CAMPAIGN_HUB_PLUGIN_URL;
 
-        // Only load on campaign/offer pages
-        if ( ! is_singular( [ 'sch_campaign', 'sch_offer' ] )
-            && ! is_post_type_archive( 'sch_campaign' )
-        ) {
+        $analytics_enabled = true;
+        try {
+            $analytics_enabled = (bool) $this->container->get( 'analytics' )->is_enabled();
+        } catch ( \Throwable $e ) {
+            $analytics_enabled = (bool) get_option( 'seo_campaign_hub_enable_analytics', true );
+        }
+
+        $is_plugin_content = is_singular( [ 'sch_campaign', 'sch_offer' ] )
+            || is_post_type_archive( 'sch_campaign' );
+
+        // Load tracker site-wide when analytics is on so page views are recorded.
+        if ( ! $analytics_enabled && ! $is_plugin_content ) {
             return;
         }
 
@@ -722,14 +730,29 @@ final class Plugin {
         wp_enqueue_script(
             'seo-campaign-hub-public',
             $url . 'assets/public/js/public.js',
-            [],
+            [ 'jquery' ],
             $version,
             true
         );
 
-        wp_localize_script( 'seo-campaign-hub-public', 'schPublic', [
-            'apiUrl' => esc_url_raw( rest_url( SEO_CAMPAIGN_HUB_REST_NAMESPACE ) ),
-            'nonce'  => wp_create_nonce( 'wp_rest' ),
+        $post_id     = is_singular() ? (int) get_queried_object_id() : 0;
+        $campaign_id = 0;
+        $offer_id    = 0;
+
+        if ( is_singular( 'sch_campaign' ) ) {
+            $campaign_id = $post_id;
+        } elseif ( is_singular( 'sch_offer' ) ) {
+            $offer_id = $post_id;
+        }
+
+        wp_localize_script( 'seo-campaign-hub-public', 'seoCampaignHubPublic', [
+            'ajaxUrl'    => admin_url( 'admin-ajax.php' ),
+            'apiUrl'     => esc_url_raw( rest_url( SEO_CAMPAIGN_HUB_REST_NAMESPACE ) ),
+            'nonce'      => wp_create_nonce( 'seo_campaign_hub_public' ),
+            'tracking'   => $analytics_enabled,
+            'postId'     => $post_id,
+            'campaignId' => $campaign_id,
+            'offerId'    => $offer_id,
         ] );
     }
 }

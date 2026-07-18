@@ -190,7 +190,93 @@ class AdminInit {
 
     /** @return void */
     public function render_analytics(): void {
-        $this->render_view( 'analytics', [ 'page_title' => __( 'Analytics', 'seo-campaign-hub' ) ] );
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- read-only date filter.
+        $days = isset( $_GET['days'] ) ? absint( $_GET['days'] ) : 30;
+        if ( ! in_array( $days, [ 7, 30, 90 ], true ) ) {
+            $days = 30;
+        }
+
+        $analytics = $this->container->get( 'analytics' );
+        $summary   = $analytics->get_dashboard_summary( $days );
+
+        // Resolve display labels for top entities.
+        $summary['top_campaigns'] = $this->enrich_top_campaigns( $summary['top_campaigns'] ?? [] );
+        $summary['top_offers']    = $this->enrich_top_offers( $summary['top_offers'] ?? [] );
+        $summary['top_links']     = $this->enrich_top_links( $summary['top_links'] ?? [] );
+
+        $this->render_view( 'analytics', [
+            'page_title' => __( 'Analytics', 'seo-campaign-hub' ),
+            'days'       => $days,
+            'summary'    => $summary,
+        ] );
+    }
+
+    /**
+     * Enrich top campaign rows with titles and edit links.
+     *
+     * @param array<int, array<string, mixed>> $rows Raw rows.
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrich_top_campaigns( array $rows ): array {
+        foreach ( $rows as &$row ) {
+            $id = (int) ( $row['campaign_id'] ?? 0 );
+            $post = $id ? get_post( $id ) : null;
+            if ( ! $post || $post->post_type !== 'sch_campaign' ) {
+                // Custom table IDs may not match post IDs — show ID only.
+                $row['label'] = $id ? sprintf( __( 'Campaign #%d', 'seo-campaign-hub' ), $id ) : __( 'Unknown', 'seo-campaign-hub' );
+                $row['edit_url'] = '';
+                continue;
+            }
+            $row['label'] = get_the_title( $post );
+            $row['edit_url'] = get_edit_post_link( $post->ID, 'raw' ) ?: '';
+        }
+        unset( $row );
+        return $rows;
+    }
+
+    /**
+     * Enrich top offer rows with titles and edit links.
+     *
+     * @param array<int, array<string, mixed>> $rows Raw rows.
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrich_top_offers( array $rows ): array {
+        foreach ( $rows as &$row ) {
+            $id = (int) ( $row['offer_id'] ?? 0 );
+            $post = $id ? get_post( $id ) : null;
+            if ( ! $post || $post->post_type !== 'sch_offer' ) {
+                $row['label'] = $id ? sprintf( __( 'Offer #%d', 'seo-campaign-hub' ), $id ) : __( 'Unknown', 'seo-campaign-hub' );
+                $row['edit_url'] = '';
+                continue;
+            }
+            $row['label'] = get_the_title( $post );
+            $row['edit_url'] = get_edit_post_link( $post->ID, 'raw' ) ?: '';
+        }
+        unset( $row );
+        return $rows;
+    }
+
+    /**
+     * Enrich top short-link rows with URLs.
+     *
+     * @param array<int, array<string, mixed>> $rows Raw rows.
+     * @return array<int, array<string, mixed>>
+     */
+    private function enrich_top_links( array $rows ): array {
+        $shortener = $this->container->get( 'shortener' );
+        foreach ( $rows as &$row ) {
+            $id = (int) ( $row['link_id'] ?? 0 );
+            $link = $id ? $shortener->get_link( $id ) : null;
+            if ( ! $link ) {
+                $row['label'] = $id ? sprintf( __( 'Link #%d', 'seo-campaign-hub' ), $id ) : __( 'Unknown', 'seo-campaign-hub' );
+                $row['edit_url'] = admin_url( 'admin.php?page=seo-campaign-hub-shortener' );
+                continue;
+            }
+            $row['label'] = ! empty( $link->title ) ? $link->title : $link->short_url;
+            $row['edit_url'] = admin_url( 'admin.php?page=seo-campaign-hub-shortener' );
+        }
+        unset( $row );
+        return $rows;
     }
 
     /** @return void */

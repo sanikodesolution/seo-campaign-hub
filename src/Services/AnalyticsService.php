@@ -63,8 +63,26 @@ class AnalyticsService {
     public function init() {
         add_action('wp_ajax_seo_campaign_hub_track', [$this, 'ajax_track_event']);
         add_action('wp_ajax_nopriv_seo_campaign_hub_track', [$this, 'ajax_track_event']);
-        add_action('wp_footer', [$this, 'add_tracking_script']);
+        // Tracking UI lives in assets/public/js/public.js — avoid a second footer tracker.
         add_action('seo_campaign_hub_analytics_cron', [$this, 'process_analytics_cron']);
+
+        if (!wp_next_scheduled('seo_campaign_hub_analytics_cron')) {
+            wp_schedule_event(time() + HOUR_IN_SECONDS, 'daily', 'seo_campaign_hub_analytics_cron');
+        }
+    }
+
+    /**
+     * Whether analytics collection is enabled.
+     *
+     * @return bool
+     */
+    public function is_enabled() {
+        $nested = get_option('seo_campaign_hub_options', []);
+        if (is_array($nested) && array_key_exists('enable_analytics', $nested)) {
+            return (bool) $nested['enable_analytics'];
+        }
+
+        return (bool) get_option('seo_campaign_hub_enable_analytics', true);
     }
 
     /**
@@ -73,12 +91,13 @@ class AnalyticsService {
      * @return string
      */
     private function get_session_id() {
-        if (!isset($_COOKIE['sch_session'])) {
-            $session_id = wp_generate_uuid4();
-            setcookie('sch_session', $session_id, time() + 86400, COOKIEPATH, COOKIE_DOMAIN);
-        } else {
-            $session_id = $_COOKIE['sch_session'];
+        $existing = isset($_COOKIE['sch_session']) ? sanitize_text_field(wp_unslash($_COOKIE['sch_session'])) : '';
+        if ($this->is_valid_uuid($existing)) {
+            return $existing;
         }
+
+        $session_id = wp_generate_uuid4();
+        $this->set_tracking_cookie('sch_session', $session_id, DAY_IN_SECONDS);
         return $session_id;
     }
 
@@ -88,12 +107,13 @@ class AnalyticsService {
      * @return string
      */
     private function get_visitor_id() {
-        if (!isset($_COOKIE['sch_visitor'])) {
-            $visitor_id = wp_generate_uuid4();
-            setcookie('sch_visitor', $visitor_id, time() + 31536000, COOKIEPATH, COOKIE_DOMAIN);
-        } else {
-            $visitor_id = $_COOKIE['sch_visitor'];
+        $existing = isset($_COOKIE['sch_visitor']) ? sanitize_text_field(wp_unslash($_COOKIE['sch_visitor'])) : '';
+        if ($this->is_valid_uuid($existing)) {
+            return $existing;
         }
+
+        $visitor_id = wp_generate_uuid4();
+        $this->set_tracking_cookie('sch_visitor', $visitor_id, YEAR_IN_SECONDS);
         return $visitor_id;
     }
 
@@ -105,65 +125,86 @@ class AnalyticsService {
      * @return int|false
      */
     public function track_event($event_type, $data = []) {
-        // Check if analytics is enabled
-        if (!get_option('seo_campaign_hub_enable_analytics', true)) {
+        if (!$this->is_enabled()) {
             return false;
         }
 
-        // Check if should ignore bots
-        if (get_option('seo_campaign_hub_ignore_bots', true) && $this->is_bot()) {
+        if ($this->get_option_bool('ignore_bots', true) && $this->is_bot()) {
             return false;
         }
 
-        // Anonymize IP if enabled
+        $data = is_array($data) ? $data : [];
+        $data = $this->normalize_event_payload($data);
+        $event_type = $this->normalize_event_type($event_type, $data);
+
+        if (!$event_type) {
+            return false;
+        }
+
+        if (!$this->is_event_type_allowed($event_type)) {
+            return false;
+        }
+
         $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        if (get_option('seo_campaign_hub_anonymize_ip', true)) {
+        if ($this->get_option_bool('anonymize_ip', true)) {
             $ip = $this->anonymize_ip($ip);
         }
 
-        // Prepare event data
+        $user_id = get_current_user_id();
+        $campaign_id = $this->nullable_id($data['campaign_id'] ?? 0);
+        $offer_id = $this->nullable_id($data['offer_id'] ?? 0);
+        $link_id = $this->nullable_id($data['link_id'] ?? 0);
+        $post_id = $this->nullable_id($data['post_id'] ?? 0);
+
         $event = [
-            'session_id' => $this->session_id,
-            'visitor_id' => $this->visitor_id,
-            'user_id' => get_current_user_id() ?: 0,
+            'session_id' => substr((string) $this->session_id, 0, 64),
+            'visitor_id' => substr((string) $this->visitor_id, 0, 64),
+            'user_id' => $user_id ? (int) $user_id : null,
             'event_type' => $event_type,
-            'event_name' => isset($data['event_name']) ? $data['event_name'] : '',
-            'event_value' => isset($data['event_value']) ? floatval($data['event_value']) : 0,
-            'campaign_id' => isset($data['campaign_id']) ? intval($data['campaign_id']) : 0,
-            'offer_id' => isset($data['offer_id']) ? intval($data['offer_id']) : 0,
-            'link_id' => isset($data['link_id']) ? intval($data['link_id']) : 0,
-            'post_id' => isset($data['post_id']) ? intval($data['post_id']) : 0,
-            'ip_address' => $ip,
-            'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? '',
-            'referrer' => $_SERVER['HTTP_REFERER'] ?? '',
-            'landing_page' => isset($data['landing_page']) ? $data['landing_page'] : '',
-            'country' => isset($data['country']) ? $data['country'] : '',
-            'region' => isset($data['region']) ? $data['region'] : '',
-            'city' => isset($data['city']) ? $data['city'] : '',
+            'event_name' => isset($data['event_name']) ? sanitize_text_field((string) $data['event_name']) : null,
+            'event_value' => isset($data['event_value']) ? floatval($data['event_value']) : null,
+            'campaign_id' => $campaign_id,
+            'offer_id' => $offer_id,
+            'link_id' => $link_id,
+            'post_id' => $post_id,
+            'ip_address' => $ip ? substr($ip, 0, 45) : null,
+            'user_agent' => isset($_SERVER['HTTP_USER_AGENT']) ? substr(sanitize_text_field(wp_unslash($_SERVER['HTTP_USER_AGENT'])), 0, 500) : null,
+            'referrer' => isset($_SERVER['HTTP_REFERER']) ? esc_url_raw(wp_unslash($_SERVER['HTTP_REFERER'])) : null,
+            'landing_page' => isset($data['landing_page']) ? esc_url_raw((string) $data['landing_page']) : null,
+            'country' => isset($data['country']) ? strtoupper(substr(sanitize_text_field((string) $data['country']), 0, 2)) : null,
+            'region' => isset($data['region']) ? sanitize_text_field((string) $data['region']) : null,
+            'city' => isset($data['city']) ? sanitize_text_field((string) $data['city']) : null,
             'device_type' => $this->get_device_type(),
-            'device_brand' => isset($data['device_brand']) ? $data['device_brand'] : '',
-            'device_model' => isset($data['device_model']) ? $data['device_model'] : '',
-            'os' => isset($data['os']) ? $data['os'] : '',
-            'os_version' => isset($data['os_version']) ? $data['os_version'] : '',
-            'browser' => isset($data['browser']) ? $data['browser'] : '',
-            'browser_version' => isset($data['browser_version']) ? $data['browser_version'] : '',
-            'screen_resolution' => isset($data['screen_resolution']) ? $data['screen_resolution'] : '',
-            'time_on_page' => isset($data['time_on_page']) ? intval($data['time_on_page']) : 0,
-            'scroll_depth' => isset($data['scroll_depth']) ? intval($data['scroll_depth']) : 0,
-            'load_time' => isset($data['load_time']) ? intval($data['load_time']) : 0,
-            'conversion_id' => isset($data['conversion_id']) ? $data['conversion_id'] : '',
-            'conversion_amount' => isset($data['conversion_amount']) ? floatval($data['conversion_amount']) : 0,
-            'conversion_currency' => isset($data['conversion_currency']) ? $data['conversion_currency'] : 'USD',
-            'utm_source' => isset($_GET['utm_source']) ? $_GET['utm_source'] : '',
-            'utm_medium' => isset($_GET['utm_medium']) ? $_GET['utm_medium'] : '',
-            'utm_campaign' => isset($_GET['utm_campaign']) ? $_GET['utm_campaign'] : '',
-            'utm_term' => isset($_GET['utm_term']) ? $_GET['utm_term'] : '',
-            'utm_content' => isset($_GET['utm_content']) ? $_GET['utm_content'] : '',
-            'meta_data' => isset($data['meta_data']) ? wp_json_encode($data['meta_data']) : null
+            'os' => isset($data['os']) ? sanitize_text_field((string) $data['os']) : null,
+            'browser' => isset($data['browser']) ? sanitize_text_field((string) $data['browser']) : null,
+            'time_on_page' => isset($data['time_on_page']) ? max(0, intval($data['time_on_page'])) : 0,
+            'scroll_depth' => isset($data['scroll_depth']) ? min(100, max(0, intval($data['scroll_depth']))) : 0,
+            'conversion_amount' => isset($data['conversion_amount']) ? floatval($data['conversion_amount']) : null,
+            'utm_source' => $this->sanitize_utm($data['utm_source'] ?? ($data['utm']['source'] ?? '')),
+            'utm_medium' => $this->sanitize_utm($data['utm_medium'] ?? ($data['utm']['medium'] ?? '')),
+            'utm_campaign' => $this->sanitize_utm($data['utm_campaign'] ?? ($data['utm']['campaign'] ?? '')),
+            'utm_term' => $this->sanitize_utm($data['utm_term'] ?? ($data['utm']['term'] ?? '')),
+            'utm_content' => $this->sanitize_utm($data['utm_content'] ?? ($data['utm']['content'] ?? '')),
+            'meta_data' => isset($data['meta_data']) ? wp_json_encode($data['meta_data']) : null,
         ];
 
-        // Insert into database
-        return $this->db->insert('analytics', $event);
+        // Prefer payload UTM; fall back to current request query only when present.
+        foreach (['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'] as $utm_key) {
+            if (empty($event[$utm_key]) && !empty($_GET[$utm_key])) {
+                $event[$utm_key] = $this->sanitize_utm(wp_unslash($_GET[$utm_key]));
+            }
+            if ($event[$utm_key] === '') {
+                $event[$utm_key] = null;
+            }
+        }
+
+        $result = $this->db->insert('analytics', $event);
+
+        if ($result === false && defined('WP_DEBUG') && WP_DEBUG) {
+            error_log('SEO Campaign Hub analytics insert failed: ' . $this->db->last_error()); // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+        }
+
+        return $result;
     }
 
     /**
@@ -174,10 +215,41 @@ class AnalyticsService {
     public function ajax_track_event() {
         check_ajax_referer('seo_campaign_hub_public', 'nonce');
 
-        $event_type = isset($_POST['event_type']) ? sanitize_text_field($_POST['event_type']) : '';
-        $data = isset($_POST['data']) ? json_decode(stripslashes($_POST['data']), true) : [];
+        if (!$this->is_enabled()) {
+            wp_send_json_error(['message' => 'Analytics disabled'], 403);
+        }
 
-        if (empty($event_type)) {
+        if (!$this->allow_tracking_request()) {
+            wp_send_json_error(['message' => 'Rate limit exceeded'], 429);
+        }
+
+        $event_type = isset($_POST['event_type']) ? sanitize_text_field(wp_unslash($_POST['event_type'])) : '';
+        $raw = isset($_POST['data']) ? wp_unslash($_POST['data']) : '';
+        $data = is_string($raw) ? json_decode($raw, true) : [];
+        if (!is_array($data)) {
+            $data = [];
+        }
+
+        if ($event_type === 'batch') {
+            $tracked = 0;
+            $events = isset($data[0]) ? $data : [];
+            foreach (array_slice($events, 0, 25) as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $type = isset($item['type']) ? (string) $item['type'] : (isset($item['event_type']) ? (string) $item['event_type'] : '');
+                $payload = isset($item['data']) && is_array($item['data']) ? $item['data'] : $item;
+                if ($this->track_event($type, $payload)) {
+                    $tracked++;
+                }
+            }
+            if ($tracked > 0) {
+                wp_send_json_success(['message' => 'Events tracked', 'count' => $tracked]);
+            }
+            wp_send_json_error(['message' => 'Failed to track events']);
+        }
+
+        if ($event_type === '') {
             wp_send_json_error(['message' => 'Event type is required']);
         }
 
@@ -185,147 +257,19 @@ class AnalyticsService {
 
         if ($result) {
             wp_send_json_success(['message' => 'Event tracked successfully']);
-        } else {
-            wp_send_json_error(['message' => 'Failed to track event']);
         }
+
+        wp_send_json_error(['message' => 'Failed to track event']);
     }
 
     /**
-     * Add tracking script to footer
+     * Legacy footer tracker hook — intentionally empty.
+     * Public tracking is handled by assets/public/js/public.js.
      *
      * @return void
      */
     public function add_tracking_script() {
-        if (!get_option('seo_campaign_hub_enable_analytics', true)) {
-            return;
-        }
-
-        if (is_admin()) {
-            return;
-        }
-
-        ?>
-        <script>
-            (function() {
-                var sch = {
-                    ajaxUrl: '<?php echo admin_url('admin-ajax.php'); ?>',
-                    nonce: '<?php echo wp_create_nonce('seo_campaign_hub_public'); ?>',
-                    events: [],
-                    
-                    track: function(eventType, data) {
-                        this.events.push({
-                            type: eventType,
-                            data: data || {},
-                            time: Date.now()
-                        });
-                        
-                        // Send batch every 5 seconds or when page unloads
-                        if (this.events.length >= 10) {
-                            this.sendBatch();
-                        }
-                    },
-                    
-                    sendBatch: function() {
-                        if (this.events.length === 0) {
-                            return;
-                        }
-                        
-                        var events = this.events;
-                        this.events = [];
-                        
-                        var xhr = new XMLHttpRequest();
-                        xhr.open('POST', this.ajaxUrl, true);
-                        xhr.setRequestHeader('Content-Type', 'application/x-www-form-urlencoded');
-                        
-                        var data = new URLSearchParams();
-                        data.append('action', 'seo_campaign_hub_track');
-                        data.append('nonce', this.nonce);
-                        data.append('event_type', 'batch');
-                        data.append('data', JSON.stringify(events));
-                        
-                        xhr.send(data.toString());
-                    }
-                };
-                
-                // Auto-send on page unload
-                window.addEventListener('beforeunload', function() {
-                    sch.sendBatch();
-                });
-                
-                // Send every 5 seconds
-                setInterval(function() {
-                    sch.sendBatch();
-                }, 5000);
-                
-                // Track page view
-                sch.track('page_view', {
-                    url: window.location.href,
-                    title: document.title
-                });
-                
-                // Track time on page
-                var startTime = Date.now();
-                document.addEventListener('visibilitychange', function() {
-                    if (document.hidden) {
-                        var timeOnPage = Math.round((Date.now() - startTime) / 1000);
-                        if (timeOnPage > 5) {
-                            sch.track('time_on_page', {
-                                seconds: timeOnPage,
-                                url: window.location.href
-                            });
-                        }
-                    }
-                });
-                
-                // Track scroll depth
-                var maxScroll = 0;
-                var scrollTimeout;
-                window.addEventListener('scroll', function() {
-                    clearTimeout(scrollTimeout);
-                    scrollTimeout = setTimeout(function() {
-                        var scrollTop = window.pageYOffset || document.documentElement.scrollTop;
-                        var docHeight = document.documentElement.scrollHeight - window.innerHeight;
-                        var scrollPercent = Math.round((scrollTop / docHeight) * 100);
-                        
-                        if (scrollPercent > maxScroll) {
-                            maxScroll = scrollPercent;
-                            if (maxScroll > 0 && maxScroll % 25 === 0) {
-                                sch.track('scroll', {
-                                    depth: maxScroll,
-                                    url: window.location.href
-                                });
-                            }
-                        }
-                    }, 500);
-                });
-                
-                // Track clicks on links
-                document.addEventListener('click', function(e) {
-                    var target = e.target;
-                    while (target && target.tagName !== 'A') {
-                        target = target.parentElement;
-                    }
-                    
-                    if (target && target.href) {
-                        var data = {
-                            url: target.href,
-                            text: target.textContent.trim()
-                        };
-                        
-                        // Check if external link
-                        if (target.href.indexOf(window.location.hostname) === -1) {
-                            sch.track('external_link', data);
-                        } else {
-                            sch.track('click', data);
-                        }
-                    }
-                });
-                
-                // Expose for other scripts
-                window.seoCampaignHub = sch;
-            })();
-        </script>
-        <?php
+        // No-op: public.js owns frontend tracking.
     }
 
     /**
@@ -336,11 +280,14 @@ class AnalyticsService {
     public function process_analytics_cron() {
         global $wpdb;
         $table = $wpdb->prefix . 'sch_analytics';
-        
-        // Delete old data if retention is set
-        $retention_days = get_option('seo_campaign_hub_analytics_retention_days', 90);
+
+        $retention_days = (int) get_option('seo_campaign_hub_analytics_retention_days', 0);
+        if ($retention_days <= 0) {
+            $retention_days = (int) get_option('seo_campaign_hub_analytics_retention', 90);
+        }
+
         if ($retention_days > 0) {
-            $date = date('Y-m-d H:i:s', strtotime("-$retention_days days"));
+            $date = gmdate('Y-m-d H:i:s', time() - ($retention_days * DAY_IN_SECONDS));
             $wpdb->query(
                 $wpdb->prepare(
                     "DELETE FROM {$table} WHERE created_at < %s",
@@ -348,8 +295,7 @@ class AnalyticsService {
                 )
             );
         }
-        
-        // Update campaign and offer statistics
+
         $this->update_statistics();
     }
 
@@ -445,10 +391,16 @@ class AnalyticsService {
         $args = wp_parse_args($args, $defaults);
         $where = [];
 
+        $allowed_orderby = ['created_at', 'event_type', 'id'];
+        $orderby = in_array($args['orderby'], $allowed_orderby, true) ? $args['orderby'] : 'created_at';
+        $order = strtoupper((string) $args['order']) === 'ASC' ? 'ASC' : 'DESC';
+        $limit = max(1, min(200, (int) $args['limit']));
+        $offset = max(0, (int) $args['offset']);
+
         if (!empty($args['event_type'])) {
             $where[] = $this->db->prepare(
                 "event_type = %s",
-                $args['event_type']
+                $this->normalize_event_type($args['event_type'], [])
             );
         }
 
@@ -485,11 +437,11 @@ class AnalyticsService {
         $query = "
             SELECT * FROM {$this->db->get_table('analytics')}
             {$where_clause}
-            ORDER BY {$args['orderby']} {$args['order']}
+            ORDER BY {$orderby} {$order}
             LIMIT %d OFFSET %d
         ";
 
-        $query = $this->db->prepare($query, $args['limit'], $args['offset']);
+        $query = $this->db->prepare($query, $limit, $offset);
         $results = $this->db->get_results($query);
 
         // Get total count
@@ -500,11 +452,79 @@ class AnalyticsService {
         $total = $this->db->get_var($count_query);
 
         return [
-            'data' => $results,
+            'data' => $results ?: [],
             'total' => (int) $total,
-            'limit' => $args['limit'],
-            'offset' => $args['offset']
+            'limit' => $limit,
+            'offset' => $offset
         ];
+    }
+
+    /**
+     * Dashboard summary for the Analytics admin page.
+     *
+     * @param int $days Number of days (7, 30, or 90).
+     * @return array<string, mixed>
+     */
+    public function get_dashboard_summary($days = 30) {
+        $days = in_array((int) $days, [7, 30, 90], true) ? (int) $days : 30;
+        $summary = $this->get_summary($days);
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sch_analytics';
+        $date = gmdate('Y-m-d H:i:s', time() - ($days * DAY_IN_SECONDS));
+
+        $page_views = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE created_at > %s AND event_type IN ('page_view','view')",
+                $date
+            )
+        );
+        $sessions = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(DISTINCT session_id) FROM {$table} WHERE created_at > %s AND session_id IS NOT NULL",
+                $date
+            )
+        );
+        $clicks = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE created_at > %s AND event_type = 'click'",
+                $date
+            )
+        );
+        $conversions = (int) $wpdb->get_var(
+            $wpdb->prepare(
+                "SELECT COUNT(*) FROM {$table} WHERE created_at > %s AND event_type = 'conversion'",
+                $date
+            )
+        );
+        $conversion_rate = $page_views > 0 ? round(($conversions / $page_views) * 100, 2) : 0.0;
+
+        $top_links = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT link_id, COUNT(*) as count
+                FROM {$table}
+                WHERE created_at > %s AND link_id IS NOT NULL
+                GROUP BY link_id
+                ORDER BY count DESC
+                LIMIT 5",
+                $date
+            ),
+            ARRAY_A
+        );
+
+        $table_exists = $this->db->table_exists('analytics');
+
+        return array_merge($summary, [
+            'enabled' => $this->is_enabled(),
+            'table_exists' => $table_exists,
+            'page_views' => $page_views,
+            'sessions' => $sessions,
+            'clicks' => $clicks,
+            'conversions' => $conversions,
+            'conversion_rate' => $conversion_rate,
+            'top_links' => $top_links ?: [],
+            'period_days' => $days,
+        ]);
     }
 
     /**
@@ -516,7 +536,20 @@ class AnalyticsService {
     public function get_summary($days = 30) {
         global $wpdb;
         $table = $wpdb->prefix . 'sch_analytics';
-        $date = date('Y-m-d H:i:s', strtotime("-$days days"));
+        $days = max(1, min(365, (int) $days));
+        $date = gmdate('Y-m-d H:i:s', time() - ($days * DAY_IN_SECONDS));
+
+        if (!$this->db->table_exists('analytics')) {
+            return [
+                'total_events' => 0,
+                'unique_visitors' => 0,
+                'events_by_type' => [],
+                'top_campaigns' => [],
+                'top_offers' => [],
+                'daily_stats' => [],
+                'period_days' => $days,
+            ];
+        }
 
         // Total events
         $total_events = $wpdb->get_var(
@@ -581,6 +614,8 @@ class AnalyticsService {
                     DATE(created_at) as date,
                     COUNT(*) as total_events,
                     COUNT(DISTINCT visitor_id) as unique_visitors,
+                    SUM(CASE WHEN event_type = 'page_view' THEN 1 ELSE 0 END) as page_views,
+                    SUM(CASE WHEN event_type = 'click' THEN 1 ELSE 0 END) as clicks,
                     SUM(CASE WHEN event_type = 'conversion' THEN 1 ELSE 0 END) as conversions
                 FROM {$table} 
                 WHERE created_at > %s 
@@ -594,10 +629,10 @@ class AnalyticsService {
         return [
             'total_events' => (int) $total_events,
             'unique_visitors' => (int) $unique_visitors,
-            'events_by_type' => $events_by_type,
-            'top_campaigns' => $top_campaigns,
-            'top_offers' => $top_offers,
-            'daily_stats' => $daily_stats,
+            'events_by_type' => $events_by_type ?: [],
+            'top_campaigns' => $top_campaigns ?: [],
+            'top_offers' => $top_offers ?: [],
+            'daily_stats' => $daily_stats ?: [],
             'period_days' => $days
         ];
     }
@@ -654,6 +689,164 @@ class AnalyticsService {
             return substr($ip, 0, strrpos($ip, ':')) . ':0000';
         }
         return $ip;
+    }
+
+    /**
+     * Normalize frontend payload aliases to schema fields.
+     *
+     * @param array $data Raw payload.
+     * @return array
+     */
+    private function normalize_event_payload(array $data) {
+        if (isset($data['seconds']) && !isset($data['time_on_page'])) {
+            $data['time_on_page'] = $data['seconds'];
+        }
+        if (isset($data['depth']) && !isset($data['scroll_depth'])) {
+            $data['scroll_depth'] = $data['depth'];
+        }
+        if (isset($data['url']) && !isset($data['landing_page'])) {
+            $data['landing_page'] = $data['url'];
+        }
+        if (!empty($data['title']) && empty($data['event_name'])) {
+            $data['event_name'] = $data['title'];
+        }
+        if (!empty($data['text']) && empty($data['meta_data']['link_text'])) {
+            $data['meta_data'] = is_array($data['meta_data'] ?? null) ? $data['meta_data'] : [];
+            $data['meta_data']['link_text'] = $data['text'];
+        }
+        return $data;
+    }
+
+    /**
+     * Normalize event type to schema enum values.
+     *
+     * @param string $event_type Incoming type.
+     * @param array  $data       Payload.
+     * @return string|null
+     */
+    private function normalize_event_type($event_type, array $data = []) {
+        $type = strtolower(trim((string) $event_type));
+        $map = [
+            'external_link' => 'click',
+            'email_link' => 'click',
+            'qr_scan' => 'click',
+            'redirect' => 'click',
+            'scroll_bottom' => 'scroll',
+            'pageview' => 'page_view',
+            'page-view' => 'page_view',
+        ];
+
+        if (isset($map[$type])) {
+            $type = $map[$type];
+        }
+
+        // Preserve original name for normalized click/scroll variants.
+        if (in_array($event_type, ['external_link', 'email_link', 'qr_scan', 'redirect', 'scroll_bottom'], true)
+            && empty($data['event_name'])
+        ) {
+            // Caller may still pass event_name separately.
+        }
+
+        return $this->is_event_type_allowed($type) ? $type : null;
+    }
+
+    /**
+     * @param string $type Event type.
+     * @return bool
+     */
+    private function is_event_type_allowed($type) {
+        return in_array($type, [
+            'page_view', 'click', 'conversion', 'view', 'impression',
+            'scroll', 'time_on_page', 'bounce', 'exit',
+        ], true);
+    }
+
+    /**
+     * @param mixed $id ID value.
+     * @return int|null
+     */
+    private function nullable_id($id) {
+        $id = intval($id);
+        return $id > 0 ? $id : null;
+    }
+
+    /**
+     * @param mixed $value UTM value.
+     * @return string
+     */
+    private function sanitize_utm($value) {
+        return sanitize_text_field(substr((string) $value, 0, 255));
+    }
+
+    /**
+     * @param string $key Option key without prefix.
+     * @param bool   $default Default value.
+     * @return bool
+     */
+    private function get_option_bool($key, $default = true) {
+        $nested = get_option('seo_campaign_hub_options', []);
+        if (is_array($nested) && array_key_exists($key, $nested)) {
+            return (bool) $nested[$key];
+        }
+        return (bool) get_option('seo_campaign_hub_' . $key, $default);
+    }
+
+    /**
+     * Soft rate-limit for anonymous tracking posts.
+     *
+     * @return bool
+     */
+    private function allow_tracking_request() {
+        if (is_user_logged_in()) {
+            return true;
+        }
+
+        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
+        if ($ip === '') {
+            return true;
+        }
+
+        $key = 'sch_track_rl_' . md5($ip);
+        $count = (int) get_transient($key);
+        if ($count > 300) {
+            return false;
+        }
+        set_transient($key, $count + 1, HOUR_IN_SECONDS);
+        return true;
+    }
+
+    /**
+     * @param string $name Cookie name.
+     * @param string $value Cookie value.
+     * @param int    $ttl Seconds.
+     * @return void
+     */
+    private function set_tracking_cookie($name, $value, $ttl) {
+        if (headers_sent()) {
+            return;
+        }
+
+        $options = [
+            'expires' => time() + $ttl,
+            'path' => defined('COOKIEPATH') && COOKIEPATH ? COOKIEPATH : '/',
+            'domain' => defined('COOKIE_DOMAIN') ? COOKIE_DOMAIN : '',
+            'secure' => is_ssl(),
+            'httponly' => true,
+            'samesite' => 'Lax',
+        ];
+
+        setcookie($name, $value, $options);
+    }
+
+    /**
+     * @param string $value Candidate UUID.
+     * @return bool
+     */
+    private function is_valid_uuid($value) {
+        return (bool) preg_match(
+            '/^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i',
+            $value
+        );
     }
 
     /**

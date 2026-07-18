@@ -12,6 +12,7 @@
      */
     class SEOPublic {
         constructor() {
+            this.config = window.seoCampaignHubPublic || {};
             this.init();
         }
 
@@ -34,7 +35,7 @@
                 const $counter = $(this);
                 const targetDate = $counter.data('target');
                 const format = $counter.data('format') || 'days-hours-minutes-seconds';
-                
+
                 if (!targetDate) {
                     return;
                 }
@@ -46,7 +47,7 @@
                     const distance = target - now;
 
                     if (distance < 0) {
-                        $counter.html('<span class="expired">' + $counter.data('expired-text') || 'Expired' + '</span>');
+                        $counter.html('<span class="expired">' + ($counter.data('expired-text') || 'Expired') + '</span>');
                         return;
                     }
 
@@ -56,7 +57,7 @@
                     const seconds = Math.floor((distance % (1000 * 60)) / 1000);
 
                     let html = '';
-                    
+
                     if (format.includes('days')) {
                         html += `<span class="counter-days"><span class="number">${days}</span> <span class="label">Days</span></span>`;
                     }
@@ -73,7 +74,6 @@
                     $counter.html(html);
                 };
 
-                // Update every second
                 updateTimer();
                 setInterval(updateTimer, 1000);
             });
@@ -83,48 +83,53 @@
          * Setup analytics tracking
          */
         setupAnalytics() {
-            if (!seoCampaignHubPublic || !seoCampaignHubPublic.tracking) {
+            if (!this.config.tracking) {
                 return;
             }
 
-            // Track page view
             this.trackEvent('page_view', {
-                url: window.location.href,
-                title: document.title
+                landing_page: window.location.href,
+                event_name: document.title,
+                post_id: this.config.postId || 0,
+                campaign_id: this.config.campaignId || 0,
+                offer_id: this.config.offerId || 0
             });
 
-            // Track time on page
             let startTime = Date.now();
-            
+
             document.addEventListener('visibilitychange', () => {
                 if (document.hidden) {
                     const timeOnPage = Math.round((Date.now() - startTime) / 1000);
                     if (timeOnPage > 5) {
                         this.trackEvent('time_on_page', {
-                            seconds: timeOnPage,
-                            url: window.location.href
+                            time_on_page: timeOnPage,
+                            landing_page: window.location.href,
+                            post_id: this.config.postId || 0
                         });
                     }
                 }
             });
 
-            // Track scroll depth
             let maxScroll = 0;
             let scrollTimeout;
 
-            $(window).on('scroll', function() {
+            $(window).on('scroll', () => {
                 clearTimeout(scrollTimeout);
                 scrollTimeout = setTimeout(() => {
                     const scrollTop = $(window).scrollTop();
                     const docHeight = $(document).height() - $(window).height();
+                    if (docHeight <= 0) {
+                        return;
+                    }
                     const scrollPercent = Math.round((scrollTop / docHeight) * 100);
 
                     if (scrollPercent > maxScroll) {
                         maxScroll = scrollPercent;
                         if (maxScroll > 0 && maxScroll % 25 === 0) {
                             this.trackEvent('scroll', {
-                                depth: maxScroll,
-                                url: window.location.href
+                                scroll_depth: maxScroll,
+                                landing_page: window.location.href,
+                                post_id: this.config.postId || 0
                             });
                         }
                     }
@@ -136,18 +141,31 @@
          * Track event
          */
         trackEvent(eventType, data = {}) {
-            if (!seoCampaignHubPublic || !seoCampaignHubPublic.ajaxUrl) {
+            if (!this.config.ajaxUrl || !this.config.tracking) {
                 return;
             }
 
+            const payload = Object.assign({}, data);
+            if (!payload.landing_page) {
+                payload.landing_page = window.location.href;
+            }
+
+            // Capture UTM from the original page, not admin-ajax.php.
+            const params = new URLSearchParams(window.location.search);
+            ['utm_source', 'utm_medium', 'utm_campaign', 'utm_term', 'utm_content'].forEach((key) => {
+                if (params.get(key) && !payload[key]) {
+                    payload[key] = params.get(key);
+                }
+            });
+
             $.ajax({
-                url: seoCampaignHubPublic.ajaxUrl,
+                url: this.config.ajaxUrl,
                 type: 'POST',
                 data: {
                     action: 'seo_campaign_hub_track',
                     event_type: eventType,
-                    data: JSON.stringify(data),
-                    nonce: seoCampaignHubPublic.nonce
+                    data: JSON.stringify(payload),
+                    nonce: this.config.nonce
                 }
             });
         }
@@ -158,7 +176,7 @@
         setupLazyLoading() {
             if ('IntersectionObserver' in window) {
                 const lazyImages = document.querySelectorAll('img[data-src]');
-                
+
                 const imageObserver = new IntersectionObserver((entries) => {
                     entries.forEach((entry) => {
                         if (entry.isIntersecting) {
@@ -174,7 +192,6 @@
                     imageObserver.observe(img);
                 });
             } else {
-                // Fallback for older browsers
                 $('img[data-src]').each(function() {
                     const $img = $(this);
                     $img.attr('src', $img.data('src'));
@@ -187,11 +204,11 @@
          * Setup scroll tracking
          */
         setupScrollTracking() {
-            // Track when user reaches bottom of page
             let bottomReached = false;
+            const self = this;
 
             $(window).on('scroll', function() {
-                if (bottomReached) {
+                if (bottomReached || !self.config.tracking) {
                     return;
                 }
 
@@ -201,8 +218,10 @@
 
                 if (scrollTop + windowHeight >= docHeight - 100) {
                     bottomReached = true;
-                    this.trackEvent('scroll_bottom', {
-                        url: window.location.href
+                    self.trackEvent('scroll', {
+                        scroll_depth: 100,
+                        event_name: 'scroll_bottom',
+                        landing_page: window.location.href
                     });
                 }
             });
@@ -212,37 +231,49 @@
          * Setup click tracking
          */
         setupClickTracking() {
-            // Track clicks on offers and CTAs
+            const self = this;
+
             $(document).on('click', '.sch-offer-link, .sch-cta, .sch-short-link', function() {
                 const $link = $(this);
-                const data = {
-                    url: $link.attr('href'),
-                    text: $link.text().trim(),
-                    type: $link.data('type') || 'link'
-                };
-
-                this.trackEvent('click', data);
+                self.trackEvent('click', {
+                    landing_page: $link.attr('href'),
+                    event_name: ($link.text() || '').trim() || 'cta_click',
+                    post_id: self.config.postId || 0,
+                    offer_id: $link.data('offer-id') || self.config.offerId || 0,
+                    campaign_id: $link.data('campaign-id') || self.config.campaignId || 0,
+                    meta_data: {
+                        link_text: ($link.text() || '').trim(),
+                        type: $link.data('type') || 'link'
+                    }
+                });
             });
 
-            // Track external link clicks
             $(document).on('click', 'a[href^="http"]', function() {
                 const $link = $(this);
-                const href = $link.attr('href');
-                
+                if ($link.is('.sch-offer-link, .sch-cta, .sch-short-link')) {
+                    return;
+                }
+                const href = $link.attr('href') || '';
+
                 if (href.indexOf(window.location.hostname) === -1) {
-                    this.trackEvent('external_link', {
-                        url: href,
-                        text: $link.text().trim()
+                    self.trackEvent('click', {
+                        landing_page: href,
+                        event_name: 'external_link',
+                        meta_data: {
+                            link_text: ($link.text() || '').trim()
+                        }
                     });
                 }
             });
 
-            // Track email link clicks
             $(document).on('click', 'a[href^="mailto:"]', function() {
                 const $link = $(this);
-                this.trackEvent('email_link', {
-                    email: $link.attr('href').replace('mailto:', ''),
-                    text: $link.text().trim()
+                self.trackEvent('click', {
+                    event_name: 'email_link',
+                    meta_data: {
+                        email: ($link.attr('href') || '').replace('mailto:', ''),
+                        link_text: ($link.text() || '').trim()
+                    }
                 });
             });
         }
@@ -252,7 +283,7 @@
      * Initialize on document ready
      */
     $(document).ready(function() {
-        window.seoCampaignHubPublic = new SEOPublic();
+        window.seoCampaignHubTracker = new SEOPublic();
     });
 
 })(jQuery);
