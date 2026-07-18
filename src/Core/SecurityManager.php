@@ -31,14 +31,42 @@ class SecurityManager {
     /**
      * Check rate limiting
      *
+     * Throttles anonymous traffic only, using a fixed one-hour window
+     * per IP. Logged-in users, cron, and CLI are never rate limited.
+     *
      * @return void
      */
     public function check_rate_limit() {
-        $ip = $_SERVER['REMOTE_ADDR'] ?? '';
-        $key = 'seo_campaign_hub_rate_limit_' . md5($ip);
-        $attempts = get_transient($key) ?: 0;
+        if (is_user_logged_in() || wp_doing_cron() || (defined('WP_CLI') && WP_CLI)) {
+            return;
+        }
 
-        if ($attempts > 100) {
+        $ip = $this->get_client_ip();
+        if (empty($ip)) {
+            return;
+        }
+
+        /**
+         * Filters the maximum number of anonymous requests allowed
+         * per IP per hour. Return 0 to disable rate limiting.
+         *
+         * @param int $limit Maximum requests per hour.
+         */
+        $limit = (int) apply_filters('seo_campaign_hub_rate_limit', 1000);
+        if ($limit <= 0) {
+            return;
+        }
+
+        $key = 'seo_campaign_hub_rate_limit_' . md5($ip);
+        $data = get_transient($key);
+
+        if (!is_array($data) || !isset($data['count'], $data['window_start'])) {
+            $data = ['count' => 0, 'window_start' => time()];
+        }
+
+        $data['count']++;
+
+        if ($data['count'] > $limit) {
             wp_die(
                 esc_html__('Rate limit exceeded. Please try again later.', 'seo-campaign-hub'),
                 esc_html__('Rate Limit Exceeded', 'seo-campaign-hub'),
@@ -46,7 +74,10 @@ class SecurityManager {
             );
         }
 
-        set_transient($key, $attempts + 1, 3600);
+        // Keep the window fixed: expire at window_start + 1 hour instead of
+        // pushing the expiry forward on every request.
+        $remaining = ($data['window_start'] + HOUR_IN_SECONDS) - time();
+        set_transient($key, $data, max(1, $remaining));
     }
 
     /**
