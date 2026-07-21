@@ -198,6 +198,20 @@ class AnalyticsService {
             }
         }
 
+        // Resolve the visitor's country from their IP when not explicitly provided.
+        if (empty($event['country'])) {
+            $geo = $this->geolocate($this->get_client_ip());
+            if ($geo['country'] !== '') {
+                $event['country'] = $geo['country'];
+                if (empty($event['region']) && $geo['region'] !== '') {
+                    $event['region'] = $geo['region'];
+                }
+                if (empty($event['city']) && $geo['city'] !== '') {
+                    $event['city'] = $geo['city'];
+                }
+            }
+        }
+
         $result = $this->db->insert('analytics', $event);
 
         if ($result === false && defined('WP_DEBUG') && WP_DEBUG) {
@@ -512,6 +526,19 @@ class AnalyticsService {
             ARRAY_A
         );
 
+        $top_countries = $wpdb->get_results(
+            $wpdb->prepare(
+                "SELECT country, COUNT(*) as count
+                FROM {$table}
+                WHERE created_at > %s AND country IS NOT NULL AND country <> ''
+                GROUP BY country
+                ORDER BY count DESC
+                LIMIT 10",
+                $date
+            ),
+            ARRAY_A
+        );
+
         $table_exists = $this->db->table_exists('analytics');
 
         return array_merge($summary, [
@@ -523,6 +550,7 @@ class AnalyticsService {
             'conversions' => $conversions,
             'conversion_rate' => $conversion_rate,
             'top_links' => $top_links ?: [],
+            'top_countries' => $top_countries ?: [],
             'period_days' => $days,
         ]);
     }
@@ -689,6 +717,114 @@ class AnalyticsService {
             return substr($ip, 0, strrpos($ip, ':')) . ':0000';
         }
         return $ip;
+    }
+
+    /**
+     * Resolve the real client IP, honouring common proxy headers.
+     *
+     * @return string
+     */
+    private function get_client_ip() {
+        $keys = ['HTTP_CF_CONNECTING_IP', 'HTTP_CLIENT_IP', 'HTTP_X_FORWARDED_FOR', 'REMOTE_ADDR'];
+        foreach ($keys as $key) {
+            if (empty($_SERVER[$key])) {
+                continue;
+            }
+            $value = sanitize_text_field(wp_unslash($_SERVER[$key]));
+            // X-Forwarded-For can be a comma-separated list; the first entry is the client.
+            if (strpos($value, ',') !== false) {
+                $value = trim(explode(',', $value)[0]);
+            }
+            if (filter_var($value, FILTER_VALIDATE_IP)) {
+                return $value;
+            }
+        }
+        return '';
+    }
+
+    /**
+     * Look up country/region/city for an IP address, with caching.
+     *
+     * Results (including misses) are cached in a transient so redirects stay
+     * fast and the provider's rate limit is respected.
+     *
+     * @param string $ip IP address.
+     * @return array{country:string,region:string,city:string}
+     */
+    private function geolocate($ip) {
+        $empty = ['country' => '', 'region' => '', 'city' => ''];
+
+        if (!$this->get_option_bool('geo_tracking', true)) {
+            return $empty;
+        }
+
+        if ($ip === '' || !filter_var($ip, FILTER_VALIDATE_IP)) {
+            return $empty;
+        }
+
+        // Skip private / reserved ranges (localhost, LAN) — no public geo data.
+        if (!filter_var($ip, FILTER_VALIDATE_IP, FILTER_FLAG_NO_PRIV_RANGE | FILTER_FLAG_NO_RES_RANGE)) {
+            return $empty;
+        }
+
+        $cache_key = 'sch_geo_' . md5($ip);
+        $cached = get_transient($cache_key);
+        if (is_array($cached)) {
+            return wp_parse_args($cached, $empty);
+        }
+
+        /**
+         * Filter the resolved geolocation for an IP address.
+         *
+         * Return an array with country/region/city keys to short-circuit the
+         * default remote lookup (for example, using a local GeoIP database).
+         *
+         * @param array|null $geo Pre-resolved geo data, or null to use the default provider.
+         * @param string     $ip  IP address being resolved.
+         */
+        $geo = apply_filters('seo_campaign_hub_geolocate_ip', null, $ip);
+
+        if (!is_array($geo)) {
+            $geo = $this->geolocate_remote($ip);
+        }
+
+        $geo = wp_parse_args(is_array($geo) ? $geo : [], $empty);
+        $geo['country'] = strtoupper(substr((string) $geo['country'], 0, 2));
+        $geo['region'] = substr(sanitize_text_field((string) $geo['region']), 0, 100);
+        $geo['city'] = substr(sanitize_text_field((string) $geo['city']), 0, 100);
+
+        // Cache hits for a week; misses for an hour so transient failures retry sooner.
+        set_transient($cache_key, $geo, $geo['country'] !== '' ? WEEK_IN_SECONDS : HOUR_IN_SECONDS);
+
+        return $geo;
+    }
+
+    /**
+     * Query the default geolocation provider (ip-api.com) for an IP address.
+     *
+     * @param string $ip IP address.
+     * @return array
+     */
+    private function geolocate_remote($ip) {
+        $response = wp_remote_get(
+            'http://ip-api.com/json/' . rawurlencode($ip) . '?fields=status,countryCode,regionName,city',
+            ['timeout' => 3]
+        );
+
+        if (is_wp_error($response) || 200 !== (int) wp_remote_retrieve_response_code($response)) {
+            return [];
+        }
+
+        $data = json_decode(wp_remote_retrieve_body($response), true);
+        if (!is_array($data) || ($data['status'] ?? '') !== 'success') {
+            return [];
+        }
+
+        return [
+            'country' => $data['countryCode'] ?? '',
+            'region' => $data['regionName'] ?? '',
+            'city' => $data['city'] ?? '',
+        ];
     }
 
     /**

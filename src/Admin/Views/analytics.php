@@ -30,11 +30,35 @@ $by_type      = is_array( $summary['events_by_type'] ?? null ) ? $summary['event
 $top_campaigns = is_array( $summary['top_campaigns'] ?? null ) ? $summary['top_campaigns'] : [];
 $top_offers    = is_array( $summary['top_offers'] ?? null ) ? $summary['top_offers'] : [];
 $top_links     = is_array( $summary['top_links'] ?? null ) ? $summary['top_links'] : [];
+$top_countries = is_array( $summary['top_countries'] ?? null ) ? $summary['top_countries'] : [];
 
 $max_daily = 1;
 foreach ( $daily as $row ) {
 	$max_daily = max( $max_daily, (int) ( $row['total_events'] ?? 0 ) );
 }
+
+$max_country = 1;
+foreach ( $top_countries as $row ) {
+	$max_country = max( $max_country, (int) ( $row['count'] ?? 0 ) );
+}
+
+/**
+ * Build a flag emoji from a two-letter ISO country code.
+ *
+ * @param string $code ISO 3166-1 alpha-2 code.
+ * @return string
+ */
+$sch_country_flag = static function ( $code ) {
+	$code = strtoupper( trim( (string) $code ) );
+	if ( strlen( $code ) !== 2 || ! ctype_alpha( $code ) ) {
+		return '';
+	}
+	$flag = '';
+	for ( $i = 0; $i < 2; $i++ ) {
+		$flag .= mb_convert_encoding( '&#' . ( 0x1F1E6 + ( ord( $code[ $i ] ) - 65 ) ) . ';', 'UTF-8', 'HTML-ENTITIES' );
+	}
+	return $flag;
+};
 
 $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 ?>
@@ -266,6 +290,49 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 					</div>
 				</div>
 
+				<h2><?php esc_html_e( 'Traffic by country', 'seo-campaign-hub' ); ?></h2>
+				<table class="wp-list-table widefat fixed striped sch-analytics-countries">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Country', 'seo-campaign-hub' ); ?></th>
+							<th><?php esc_html_e( 'Events', 'seo-campaign-hub' ); ?></th>
+							<th><?php esc_html_e( 'Share', 'seo-campaign-hub' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php if ( empty( $top_countries ) ) : ?>
+							<tr>
+								<td colspan="3">
+									<?php esc_html_e( 'No country data yet. Country is detected from visitor IP addresses on clicks and page views (local/private IPs are skipped).', 'seo-campaign-hub' ); ?>
+								</td>
+							</tr>
+						<?php else : ?>
+							<?php foreach ( $top_countries as $row ) : ?>
+								<?php
+								$code  = strtoupper( (string) ( $row['country'] ?? '' ) );
+								$count = (int) ( $row['count'] ?? 0 );
+								$pct   = $max_country > 0 ? round( ( $count / $max_country ) * 100 ) : 0;
+								$flag  = $sch_country_flag( $code );
+								?>
+								<tr>
+									<td>
+										<?php if ( '' !== $flag ) : ?>
+											<span class="sch-country-flag" aria-hidden="true"><?php echo esc_html( $flag ); ?></span>
+										<?php endif; ?>
+										<code><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code>
+									</td>
+									<td><?php echo esc_html( number_format_i18n( $count ) ); ?></td>
+									<td>
+										<div class="sch-bar" role="img" aria-label="<?php echo esc_attr( $count . ' events' ); ?>">
+											<span style="width:<?php echo esc_attr( (string) $pct ); ?>%"></span>
+										</div>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</tbody>
+				</table>
+
 			<?php endif; ?>
 		</div>
 	</div>
@@ -279,4 +346,6 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 	.sch-bar { background:#eef1f4; border-radius:4px; height:10px; overflow:hidden; }
 	.sch-bar span { display:block; height:100%; background:#007cba; border-radius:4px; }
 	.sch-analytics-trend td { vertical-align:middle; }
+	.sch-analytics-countries td { vertical-align:middle; }
+	.sch-country-flag { font-size:16px; margin-right:6px; line-height:1; }
 </style>
