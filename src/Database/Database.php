@@ -22,7 +22,7 @@ class Database {
      *
      * @var string
      */
-    private $db_version = '1.0.0';
+    private $db_version = '1.1.0';
 
     /**
      * Table prefix
@@ -65,6 +65,15 @@ class Database {
         
         if (version_compare($installed_version, $this->db_version, '<')) {
             $this->upgrade($installed_version);
+        }
+
+        // Guarantee 1.1.0 columns after zip upload without relying only on activate.
+        if (get_option('seo_campaign_hub_schema_1_1_0') !== 'yes') {
+            require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
+            (new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0())->up();
+            update_option('seo_campaign_hub_schema_1_1_0', 'yes');
+            update_option('seo_campaign_hub_db_version', $this->db_version);
+            set_transient('seo_campaign_hub_show_setup_notice', '1.1.0', WEEK_IN_SECONDS);
         }
     }
 

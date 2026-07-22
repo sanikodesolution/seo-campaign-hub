@@ -82,6 +82,8 @@ class ShortenerService {
             'description' => isset($data['description']) ? sanitize_textarea_field($data['description']) : '',
             'link_type' => isset($data['link_type']) ? sanitize_text_field($data['link_type']) : 'direct',
             'redirect_type' => isset($data['redirect_type']) ? sanitize_text_field($data['redirect_type']) : get_option('seo_campaign_hub_default_redirect_type', '301'),
+            'redirect_priority' => $this->sanitize_redirect_priority($data['redirect_priority'] ?? ''),
+            'targeting_rules' => wp_json_encode($this->sanitize_targeting_rules($data['targeting_rules'] ?? [])),
             'is_active' => isset($data['is_active']) ? intval($data['is_active']) : 1,
             'is_public' => isset($data['is_public']) ? intval($data['is_public']) : 1,
             'utm_source' => isset($data['utm_source']) ? sanitize_text_field($data['utm_source']) : '',
@@ -349,15 +351,24 @@ class ShortenerService {
             )
         );
 
-        // Track click event
         $analytics = new AnalyticsService();
+        $language  = $analytics->detect_visitor_language();
+        $country   = $analytics->get_visitor_country_code();
+        $resolved  = $this->resolve_destination( $link, $language, $country );
+
+        // Track click event
         $analytics->track_event('click', [
             'link_id' => $link->id,
-            'event_name' => 'short_url_redirect'
+            'event_name' => 'short_url_redirect',
+            'language' => $language !== '' ? $language : null,
+            'country' => $country !== '' ? $country : null,
+            'meta_data' => [
+                'matched_rule_type' => $resolved['matched'],
+            ],
         ]);
 
         // Build destination URL with UTM parameters
-        $destination_url = $link->destination_url;
+        $destination_url = $resolved['url'];
         $utm_params = [];
 
         if (!empty($link->utm_source)) {
@@ -381,7 +392,11 @@ class ShortenerService {
             $query = $parsed_url['query'] ?? '';
             parse_str($query, $existing_params);
             $all_params = array_merge($existing_params, $utm_params);
-            $destination_url = $parsed_url['scheme'] . '://' . $parsed_url['host'] . $parsed_url['path'];
+            $destination_url = ($parsed_url['scheme'] ?? 'https') . '://' . ($parsed_url['host'] ?? '');
+            if (!empty($parsed_url['port'])) {
+                $destination_url .= ':' . $parsed_url['port'];
+            }
+            $destination_url .= $parsed_url['path'] ?? '';
             if (!empty($all_params)) {
                 $destination_url .= '?' . http_build_query($all_params);
             }
@@ -394,6 +409,187 @@ class ShortenerService {
         $redirect_type = intval($link->redirect_type) ?: 301;
         wp_redirect($destination_url, $redirect_type);
         exit;
+    }
+
+    /**
+     * Whether smart language/country redirects are enabled.
+     *
+     * @return bool
+     */
+    public function is_smart_redirects_enabled() {
+        $nested = get_option('seo_campaign_hub_options', []);
+        if (is_array($nested) && array_key_exists('enable_smart_redirects', $nested)) {
+            return (string) $nested['enable_smart_redirects'] === '1';
+        }
+        return (bool) get_option('seo_campaign_hub_enable_smart_redirects', true);
+    }
+
+    /**
+     * Default redirect priority from settings.
+     *
+     * @return string language|country
+     */
+    public function get_default_redirect_priority() {
+        $nested = get_option('seo_campaign_hub_options', []);
+        if (is_array($nested) && !empty($nested['default_redirect_priority'])) {
+            return $this->sanitize_redirect_priority($nested['default_redirect_priority']);
+        }
+        return $this->sanitize_redirect_priority(
+            (string) get_option('seo_campaign_hub_default_redirect_priority', 'language')
+        );
+    }
+
+    /**
+     * Enabled language codes from Localization settings.
+     *
+     * @return string[]
+     */
+    public function get_enabled_languages() {
+        $defaults = ['en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'ar', 'he', 'tr', 'fa'];
+        $nested = get_option('seo_campaign_hub_options', []);
+        $raw = null;
+
+        if (is_array($nested) && isset($nested['enabled_languages'])) {
+            $raw = $nested['enabled_languages'];
+        } else {
+            $raw = get_option('seo_campaign_hub_enabled_languages', $defaults);
+        }
+
+        if (is_string($raw)) {
+            $decoded = json_decode($raw, true);
+            $raw = is_array($decoded) ? $decoded : preg_split('/[\s,]+/', $raw);
+        }
+
+        if (!is_array($raw)) {
+            return $defaults;
+        }
+
+        $codes = [];
+        foreach ($raw as $code) {
+            $code = strtolower(substr(sanitize_text_field((string) $code), 0, 2));
+            if (preg_match('/^[a-z]{2}$/', $code)) {
+                $codes[] = $code;
+            }
+        }
+
+        $codes = array_values(array_unique($codes));
+        return !empty($codes) ? $codes : $defaults;
+    }
+
+    /**
+     * Sanitize redirect priority.
+     *
+     * @param string $priority Priority value.
+     * @return string
+     */
+    public function sanitize_redirect_priority($priority) {
+        $priority = sanitize_key((string) $priority);
+        return in_array($priority, ['language', 'country'], true) ? $priority : 'language';
+    }
+
+    /**
+     * Sanitize targeting rules list.
+     *
+     * @param mixed $rules Raw rules.
+     * @return array<int, array{type:string,match:string,url:string}>
+     */
+    public function sanitize_targeting_rules($rules) {
+        if (is_string($rules)) {
+            $decoded = json_decode($rules, true);
+            $rules = is_array($decoded) ? $decoded : [];
+        }
+
+        if (!is_array($rules)) {
+            return [];
+        }
+
+        $clean = [];
+        foreach ($rules as $rule) {
+            if (!is_array($rule)) {
+                continue;
+            }
+
+            $type = isset($rule['type']) ? sanitize_key((string) $rule['type']) : '';
+            if (!in_array($type, ['language', 'country'], true)) {
+                continue;
+            }
+
+            $match = isset($rule['match']) ? sanitize_text_field((string) $rule['match']) : '';
+            if ($type === 'language') {
+                $match = strtolower(substr($match, 0, 2));
+                if (!preg_match('/^[a-z]{2}$/', $match)) {
+                    continue;
+                }
+            } else {
+                $match = strtoupper(substr($match, 0, 2));
+                if (!preg_match('/^[A-Z]{2}$/', $match)) {
+                    continue;
+                }
+            }
+
+            $url = isset($rule['url']) ? esc_url_raw((string) $rule['url']) : '';
+            if ($url === '' || !filter_var($url, FILTER_VALIDATE_URL)) {
+                continue;
+            }
+
+            $clean[] = [
+                'type' => $type,
+                'match' => $match,
+                'url' => $url,
+            ];
+        }
+
+        return $clean;
+    }
+
+    /**
+     * Resolve the redirect destination for a short link.
+     *
+     * @param object $link     Link row.
+     * @param string $language Visitor language (2-letter) or empty.
+     * @param string $country  Visitor country (2-letter) or empty.
+     * @return array{url:string,matched:string}
+     */
+    public function resolve_destination($link, $language = '', $country = '') {
+        $fallback = isset($link->destination_url) ? (string) $link->destination_url : '';
+
+        if (!$this->is_smart_redirects_enabled()) {
+            return ['url' => $fallback, 'matched' => 'default'];
+        }
+
+        $rules = $this->sanitize_targeting_rules(
+            isset($link->targeting_rules) ? $link->targeting_rules : []
+        );
+
+        if (empty($rules)) {
+            return ['url' => $fallback, 'matched' => 'default'];
+        }
+
+        $priority = $this->sanitize_redirect_priority(
+            isset($link->redirect_priority) ? $link->redirect_priority : $this->get_default_redirect_priority()
+        );
+        $secondary = $priority === 'language' ? 'country' : 'language';
+
+        foreach ([$priority, $secondary] as $type) {
+            $visitor_value = $type === 'language' ? strtolower($language) : strtoupper($country);
+            if ($visitor_value === '') {
+                continue;
+            }
+
+            foreach ($rules as $rule) {
+                if ($rule['type'] !== $type) {
+                    continue;
+                }
+                if ($rule['match'] === $visitor_value) {
+                    return [
+                        'url' => $rule['url'],
+                        'matched' => $type,
+                    ];
+                }
+            }
+        }
+
+        return ['url' => $fallback, 'matched' => 'default'];
     }
 
     /**

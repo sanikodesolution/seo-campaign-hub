@@ -212,6 +212,21 @@ class AnalyticsService {
             }
         }
 
+        if (!empty($event['country']) && !preg_match('/^[A-Z]{2}$/', $event['country'])) {
+            $event['country'] = null;
+        }
+
+        // Only write language when the 1.1.0 column exists.
+        if ($this->column_exists('language')) {
+            $language = isset($data['language'])
+                ? strtolower(substr(sanitize_text_field((string) $data['language']), 0, 2))
+                : '';
+            if ($language === '') {
+                $language = $this->detect_visitor_language();
+            }
+            $event['language'] = preg_match('/^[a-z]{2}$/', $language) ? $language : null;
+        }
+
         $result = $this->db->insert('analytics', $event);
 
         if ($result === false && defined('WP_DEBUG') && WP_DEBUG) {
@@ -539,6 +554,22 @@ class AnalyticsService {
             ARRAY_A
         );
 
+        $top_languages = [];
+        if ($this->column_exists('language')) {
+            $top_languages = $wpdb->get_results(
+                $wpdb->prepare(
+                    "SELECT language, COUNT(*) as count
+                    FROM {$table}
+                    WHERE created_at > %s AND language IS NOT NULL AND language <> ''
+                    GROUP BY language
+                    ORDER BY count DESC
+                    LIMIT 10",
+                    $date
+                ),
+                ARRAY_A
+            );
+        }
+
         $table_exists = $this->db->table_exists('analytics');
 
         return array_merge($summary, [
@@ -551,8 +582,64 @@ class AnalyticsService {
             'conversion_rate' => $conversion_rate,
             'top_links' => $top_links ?: [],
             'top_countries' => $top_countries ?: [],
+            'top_languages' => $top_languages ?: [],
             'period_days' => $days,
         ]);
+    }
+
+    /**
+     * Detect the visitor's preferred language from Accept-Language.
+     *
+     * @return string Two-letter lowercase code, or empty string.
+     */
+    public function detect_visitor_language() {
+        $header = isset($_SERVER['HTTP_ACCEPT_LANGUAGE'])
+            ? sanitize_text_field(wp_unslash($_SERVER['HTTP_ACCEPT_LANGUAGE']))
+            : '';
+
+        if ($header === '') {
+            return '';
+        }
+
+        // Take the first language tag (e.g. "en-US,en;q=0.9" → "en").
+        $parts = preg_split('/\s*,\s*/', $header);
+        $primary = isset($parts[0]) ? strtolower(trim((string) $parts[0])) : '';
+        $primary = preg_replace('/;.*$/', '', $primary);
+        $code = substr((string) $primary, 0, 2);
+
+        return preg_match('/^[a-z]{2}$/', $code) ? $code : '';
+    }
+
+    /**
+     * Resolve visitor country code via geo lookup.
+     *
+     * @return string Two-letter uppercase country code, or empty string.
+     */
+    public function get_visitor_country_code() {
+        $geo = $this->geolocate($this->get_client_ip());
+        return isset($geo['country']) ? (string) $geo['country'] : '';
+    }
+
+    /**
+     * Whether an analytics table column exists (cached per request).
+     *
+     * @param string $column Column name.
+     * @return bool
+     */
+    private function column_exists($column) {
+        static $cache = [];
+
+        $column = sanitize_key($column);
+        if (isset($cache[$column])) {
+            return $cache[$column];
+        }
+
+        global $wpdb;
+        $table = $wpdb->prefix . 'sch_analytics';
+        // phpcs:ignore WordPress.DB.PreparedSQL.InterpolatedNotPrepared
+        $exists = (bool) $wpdb->get_results($wpdb->prepare("SHOW COLUMNS FROM {$table} LIKE %s", $column));
+        $cache[$column] = $exists;
+        return $exists;
     }
 
     /**

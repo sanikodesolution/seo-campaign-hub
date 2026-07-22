@@ -31,6 +31,7 @@ $top_campaigns = is_array( $summary['top_campaigns'] ?? null ) ? $summary['top_c
 $top_offers    = is_array( $summary['top_offers'] ?? null ) ? $summary['top_offers'] : [];
 $top_links     = is_array( $summary['top_links'] ?? null ) ? $summary['top_links'] : [];
 $top_countries = is_array( $summary['top_countries'] ?? null ) ? $summary['top_countries'] : [];
+$top_languages = is_array( $summary['top_languages'] ?? null ) ? $summary['top_languages'] : [];
 
 $max_daily = 1;
 foreach ( $daily as $row ) {
@@ -40,6 +41,11 @@ foreach ( $daily as $row ) {
 $max_country = 1;
 foreach ( $top_countries as $row ) {
 	$max_country = max( $max_country, (int) ( $row['count'] ?? 0 ) );
+}
+
+$max_language = 1;
+foreach ( $top_languages as $row ) {
+	$max_language = max( $max_language, (int) ( $row['count'] ?? 0 ) );
 }
 
 /**
@@ -321,6 +327,43 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 										<?php endif; ?>
 										<code><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code>
 									</td>
+									<td><?php echo esc_html( number_format_i18n( $count ) ); ?></td>
+									<td>
+										<div class="sch-bar" role="img" aria-label="<?php echo esc_attr( $count . ' events' ); ?>">
+											<span style="width:<?php echo esc_attr( (string) $pct ); ?>%"></span>
+										</div>
+									</td>
+								</tr>
+							<?php endforeach; ?>
+						<?php endif; ?>
+					</tbody>
+				</table>
+
+				<h2><?php esc_html_e( 'Traffic by language', 'seo-campaign-hub' ); ?></h2>
+				<table class="wp-list-table widefat fixed striped sch-analytics-countries">
+					<thead>
+						<tr>
+							<th><?php esc_html_e( 'Language', 'seo-campaign-hub' ); ?></th>
+							<th><?php esc_html_e( 'Events', 'seo-campaign-hub' ); ?></th>
+							<th><?php esc_html_e( 'Share', 'seo-campaign-hub' ); ?></th>
+						</tr>
+					</thead>
+					<tbody>
+						<?php if ( empty( $top_languages ) ) : ?>
+							<tr>
+								<td colspan="3">
+									<?php esc_html_e( 'No language data yet. Language is detected from the visitor browser Accept-Language header on clicks and page views.', 'seo-campaign-hub' ); ?>
+								</td>
+							</tr>
+						<?php else : ?>
+							<?php foreach ( $top_languages as $row ) : ?>
+								<?php
+								$code  = strtolower( (string) ( $row['language'] ?? '' ) );
+								$count = (int) ( $row['count'] ?? 0 );
+								$pct   = $max_language > 0 ? round( ( $count / $max_language ) * 100 ) : 0;
+								?>
+								<tr>
+									<td><code><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code></td>
 									<td><?php echo esc_html( number_format_i18n( $count ) ); ?></td>
 									<td>
 										<div class="sch-bar" role="img" aria-label="<?php echo esc_attr( $count . ' events' ); ?>">

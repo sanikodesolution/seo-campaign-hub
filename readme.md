@@ -32,14 +32,15 @@ Use it to:
 
 ## Quick start (recommended workflow)
 
-Follow this order the first time you use the plugin:
+Use **normal WordPress posts/pages** for SEO landing content. Use this plugin for short links, language/country routing, and analytics.
 
-1. **Configure settings** — **SEO Campaign Hub → Settings**
-2. **Create an offer** — the product/affiliate destination you promote
-3. **Create a campaign** — the landing page that presents the offer
-4. **Create a short link** — track traffic into the campaign or offer
-5. **Optional: generate a QR code** — for print / offline channels
-6. **Check Analytics** — review clicks and views as traffic comes in
+1. **Create SEO posts/pages** — one per language if needed (e.g. `/en/deal/`, `/ar/deal/`)
+2. **Flush permalinks** — **Settings → Permalinks → Save Changes** (once)
+3. **Configure Localization** — **SEO Campaign Hub → Settings → Localization**
+4. **Create a short link** — Destination URL = your default WP post; add smart language/country rules
+5. **Share** `/go/your-slug` and monitor **Analytics** (country + language)
+
+Optional: use the built-in Campaigns/Offers CPTs if you want plugin-owned landing content instead of regular posts.
 
 ---
 
@@ -143,6 +144,26 @@ In **SEO Campaign Hub → Settings → URL Shortener Settings**:
 - Set URL prefix (default: `go`)
 - Choose default redirect type in General Settings (`301`, `302`, or `307`)
 
+### Smart language / country redirects
+
+One short link can send visitors to different WordPress posts/pages based on browser language and/or IP country.
+
+1. Create separate WP posts/pages per language (for example `/en/deal/`, `/ar/deal/`, `/es/deal/`)
+2. Go to **URL Shortener** and set the default Destination URL (fallback)
+3. Open **Smart redirect rules** and add language and/or country rules
+4. Choose **Match priority** per link: Language first or Country first
+5. Share the single `/go/{slug}` URL
+
+Default language pack (Settings → Localization):  
+`en`, `es`, `pt`, `fr`, `de`, `it`, `nl`, `pl`, `ru`, `ar`, `he`, `tr`, `fa`  
+(Europe, Americas, Middle East coverage)
+
+Matching order:
+
+1. Primary type (language or country, based on link priority)
+2. Secondary type
+3. Fallback Destination URL
+
 ### Important
 
 If `/go/your-slug` returns a 404, flush permalinks: **Settings → Permalinks → Save Changes**.
@@ -167,6 +188,7 @@ Configure defaults under **Settings → QR Code Settings**:
 
 1. Go to **SEO Campaign Hub → Analytics**
 2. Review page views, clicks, and conversions for your campaigns and links
+3. Review **Traffic by country** and **Traffic by language**
 
 Tune tracking under **Settings → Analytics Settings**:
 
@@ -204,6 +226,13 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 ### QR Codes
 
 - Size, format, colors
+
+### Localization
+
+- Enable smart redirects
+- Default match priority (language or country first)
+- Enabled languages checklist (EU / Americas / Middle East pack)
+- Default fallback language
 
 ### Advanced
 
@@ -355,6 +384,13 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.0
+
+- Smart language / country redirects for short links
+- Default Localization language pack (Europe, Americas, Middle East)
+- Per-link redirect priority (language or country first)
+- Analytics language tracking and Traffic by language dashboard
 
 ### 1.0.0
 

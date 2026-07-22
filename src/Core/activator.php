@@ -99,7 +99,23 @@ class Activator {
             }
         }
 
+        // dbDelta does not always add ENUM/JSON columns on existing installs.
+        // Run versioned migrations, then force the 1.1.0 ALTER (idempotent).
+        $installed = (string) get_option( 'seo_campaign_hub_db_version', '0.0.0' );
+        if ( version_compare( $installed, SEO_CAMPAIGN_HUB_VERSION, '<' ) ) {
+            try {
+                ( new \SEO_Campaign_Hub\Database\MigrationManager() )->upgrade( $installed, SEO_CAMPAIGN_HUB_VERSION );
+            } catch ( \Throwable $e ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub — migration error: ' . $e->getMessage() );
+            }
+        }
+
+        require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
+        ( new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0() )->up();
+
         update_option( 'seo_campaign_hub_db_version', SEO_CAMPAIGN_HUB_VERSION );
+        update_option( 'seo_campaign_hub_schema_1_1_0', 'yes' );
     }
 
     /**
@@ -218,6 +234,8 @@ class Activator {
                 description TEXT DEFAULT NULL,
                 link_type ENUM('direct','cloaked','affiliate','cpa','tracking') DEFAULT 'direct',
                 redirect_type ENUM('301','302','307') DEFAULT '301',
+                redirect_priority ENUM('language','country') DEFAULT 'language',
+                targeting_rules JSON DEFAULT NULL,
                 is_active TINYINT(1) DEFAULT 1,
                 is_public TINYINT(1) DEFAULT 1,
                 utm_source VARCHAR(255) DEFAULT NULL,
@@ -262,6 +280,7 @@ class Activator {
                 referrer TEXT,
                 landing_page TEXT,
                 country CHAR(2) DEFAULT NULL,
+                language CHAR(2) DEFAULT NULL,
                 region VARCHAR(100) DEFAULT NULL,
                 city VARCHAR(100) DEFAULT NULL,
                 device_type ENUM('desktop','mobile','tablet','unknown') DEFAULT 'unknown',
@@ -285,6 +304,7 @@ class Activator {
                 KEY link_id (link_id),
                 KEY created_at (created_at),
                 KEY country (country),
+                KEY language (language),
                 KEY device_type (device_type)
             ) $c",
 
@@ -391,6 +411,10 @@ class Activator {
             'track_conversions'     => true,
             'default_country'       => 'US',
             'default_language'      => 'en',
+            'enable_smart_redirects' => true,
+            'default_redirect_priority' => 'language',
+            'enabled_languages'     => [ 'en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'ar', 'he', 'tr', 'fa' ],
+            'default_fallback_language' => 'en',
             'analytics_retention'   => 90,
             'cache_enabled'         => true,
             'cache_expiration'      => 3600,
@@ -405,6 +429,37 @@ class Activator {
                 add_option( $option_name, $value );
             }
         }
+
+        // Seed nested Settings options used by the admin Settings screen.
+        $nested = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $nested ) ) {
+            $nested = [];
+        }
+
+        $nested_defaults = [
+            'enable_smart_redirects'      => '1',
+            'default_redirect_priority'   => 'language',
+            'enabled_languages'           => [ 'en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'ar', 'he', 'tr', 'fa' ],
+            'default_fallback_language'   => 'en',
+            'enable_shortener'            => '1',
+            'enable_analytics'            => '1',
+            'geo_tracking'                => '1',
+        ];
+
+        $changed = false;
+        foreach ( $nested_defaults as $key => $value ) {
+            if ( ! array_key_exists( $key, $nested ) ) {
+                $nested[ $key ] = $value;
+                $changed        = true;
+            }
+        }
+
+        if ( $changed || get_option( 'seo_campaign_hub_options' ) === false ) {
+            update_option( 'seo_campaign_hub_options', $nested );
+        }
+
+        // One-time admin notice after activate/update for the shortener workflow.
+        set_transient( 'seo_campaign_hub_show_setup_notice', '1.1.0', WEEK_IN_SECONDS );
     }
 
     /**

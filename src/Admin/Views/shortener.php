@@ -17,6 +17,25 @@ if ( ! defined( 'ABSPATH' ) ) {
 
 $links  = isset( $links ) && is_array( $links ) ? $links : [];
 $prefix = isset( $prefix ) ? (string) $prefix : 'go';
+$enabled_languages = isset( $enabled_languages ) && is_array( $enabled_languages ) ? $enabled_languages : [ 'en' ];
+$default_priority  = isset( $default_priority ) ? (string) $default_priority : 'language';
+$smart_redirects_enabled = ! isset( $smart_redirects_enabled ) || $smart_redirects_enabled;
+
+$language_labels = [
+    'en' => 'English',
+    'es' => 'Spanish',
+    'pt' => 'Portuguese',
+    'fr' => 'French',
+    'de' => 'German',
+    'it' => 'Italian',
+    'nl' => 'Dutch',
+    'pl' => 'Polish',
+    'ru' => 'Russian',
+    'ar' => 'Arabic',
+    'he' => 'Hebrew',
+    'tr' => 'Turkish',
+    'fa' => 'Persian',
+];
 
 // phpcs:disable WordPress.Security.NonceVerification.Recommended -- read-only notice display.
 $notice     = isset( $_GET['sch_notice'] ) ? sanitize_key( $_GET['sch_notice'] ) : '';
@@ -134,8 +153,86 @@ $notices = [
                     </table>
                 </details>
 
+                <details class="sch-rules-details" <?php echo $smart_redirects_enabled ? 'open' : ''; ?>>
+                    <summary><?php esc_html_e( 'Smart redirect rules (language / country)', 'seo-campaign-hub' ); ?></summary>
+                    <?php if ( ! $smart_redirects_enabled ) : ?>
+                        <p class="description">
+                            <?php esc_html_e( 'Smart redirects are disabled in Settings → Localization. Enable them to use these rules.', 'seo-campaign-hub' ); ?>
+                        </p>
+                    <?php endif; ?>
+                    <table class="form-table" role="presentation">
+                        <tr>
+                            <th scope="row">
+                                <label for="sch-redirect-priority"><?php esc_html_e( 'Match priority', 'seo-campaign-hub' ); ?></label>
+                            </th>
+                            <td>
+                                <select id="sch-redirect-priority" name="redirect_priority">
+                                    <option value="language" <?php selected( $default_priority, 'language' ); ?>>
+                                        <?php esc_html_e( 'Language first', 'seo-campaign-hub' ); ?>
+                                    </option>
+                                    <option value="country" <?php selected( $default_priority, 'country' ); ?>>
+                                        <?php esc_html_e( 'Country first', 'seo-campaign-hub' ); ?>
+                                    </option>
+                                </select>
+                                <p class="description">
+                                    <?php esc_html_e( 'Destination URL above is the fallback when no rule matches.', 'seo-campaign-hub' ); ?>
+                                </p>
+                            </td>
+                        </tr>
+                    </table>
+
+                    <table class="widefat striped sch-rules-table" id="sch-targeting-rules">
+                        <thead>
+                            <tr>
+                                <th style="width:140px"><?php esc_html_e( 'Type', 'seo-campaign-hub' ); ?></th>
+                                <th style="width:180px"><?php esc_html_e( 'Match', 'seo-campaign-hub' ); ?></th>
+                                <th><?php esc_html_e( 'Destination URL', 'seo-campaign-hub' ); ?></th>
+                                <th style="width:90px"><?php esc_html_e( 'Remove', 'seo-campaign-hub' ); ?></th>
+                            </tr>
+                        </thead>
+                        <tbody></tbody>
+                    </table>
+                    <p>
+                        <button type="button" class="button" id="sch-add-rule">
+                            <?php esc_html_e( 'Add rule', 'seo-campaign-hub' ); ?>
+                        </button>
+                    </p>
+                </details>
+
                 <?php submit_button( __( 'Create Short Link', 'seo-campaign-hub' ) ); ?>
             </form>
+
+            <template id="sch-rule-row-template">
+                <tr class="sch-rule-row">
+                    <td>
+                        <select name="targeting_rules[__INDEX__][type]" class="sch-rule-type">
+                            <option value="language"><?php esc_html_e( 'Language', 'seo-campaign-hub' ); ?></option>
+                            <option value="country"><?php esc_html_e( 'Country', 'seo-campaign-hub' ); ?></option>
+                        </select>
+                    </td>
+                    <td class="sch-rule-match-cell">
+                        <select name="targeting_rules[__INDEX__][match]" class="sch-rule-match-language">
+                            <?php foreach ( $enabled_languages as $code ) : ?>
+                                <option value="<?php echo esc_attr( $code ); ?>">
+                                    <?php
+                                    $label = isset( $language_labels[ $code ] ) ? $language_labels[ $code ] : strtoupper( $code );
+                                    echo esc_html( $label . ' (' . $code . ')' );
+                                    ?>
+                                </option>
+                            <?php endforeach; ?>
+                        </select>
+                        <input type="text" name="targeting_rules[__INDEX__][match]" class="sch-rule-match-country regular-text"
+                               maxlength="2" placeholder="US" style="display:none;max-width:80px" disabled>
+                    </td>
+                    <td>
+                        <input type="url" name="targeting_rules[__INDEX__][url]" class="regular-text"
+                               placeholder="https://example.com/ar/deal/">
+                    </td>
+                    <td>
+                        <button type="button" class="button button-small sch-remove-rule"><?php esc_html_e( 'Remove', 'seo-campaign-hub' ); ?></button>
+                    </td>
+                </tr>
+            </template>
 
             <hr>
 
@@ -226,8 +323,11 @@ $notices = [
 </div>
 
 <style>
-    .sch-utm-details { margin:10px 0 20px; }
-    .sch-utm-details summary { cursor:pointer; font-weight:600; padding:8px 0; }
+    .sch-utm-details,
+    .sch-rules-details { margin:10px 0 20px; }
+    .sch-utm-details summary,
+    .sch-rules-details summary { cursor:pointer; font-weight:600; padding:8px 0; }
+    .sch-rules-table { margin:12px 0; }
     .sch-status { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }
     .sch-status-active   { background:#d4edda; color:#155724; }
     .sch-status-inactive { background:#f8d7da; color:#721c24; }
@@ -235,15 +335,70 @@ $notices = [
 </style>
 
 <script>
-    document.addEventListener( 'click', function ( e ) {
-        var btn = e.target.closest( '.sch-copy' );
-        if ( ! btn ) {
-            return;
+    (function () {
+        var tableBody = document.querySelector( '#sch-targeting-rules tbody' );
+        var template = document.getElementById( 'sch-rule-row-template' );
+        var addBtn = document.getElementById( 'sch-add-rule' );
+        var ruleIndex = 0;
+
+        function syncMatchControls( row ) {
+            var typeSelect = row.querySelector( '.sch-rule-type' );
+            var lang = row.querySelector( '.sch-rule-match-language' );
+            var country = row.querySelector( '.sch-rule-match-country' );
+            if ( ! typeSelect || ! lang || ! country ) {
+                return;
+            }
+            var isCountry = typeSelect.value === 'country';
+            lang.style.display = isCountry ? 'none' : '';
+            lang.disabled = isCountry;
+            country.style.display = isCountry ? '' : 'none';
+            country.disabled = ! isCountry;
         }
-        navigator.clipboard.writeText( btn.dataset.url ).then( function () {
-            var original = btn.textContent;
-            btn.textContent = '<?php echo esc_js( __( 'Copied!', 'seo-campaign-hub' ) ); ?>';
-            setTimeout( function () { btn.textContent = original; }, 1500 );
+
+        function addRule() {
+            if ( ! tableBody || ! template ) {
+                return;
+            }
+            var html = template.innerHTML.replace( /__INDEX__/g, String( ruleIndex++ ) );
+            var wrap = document.createElement( 'tbody' );
+            wrap.innerHTML = html.trim();
+            var row = wrap.firstElementChild;
+            tableBody.appendChild( row );
+            syncMatchControls( row );
+        }
+
+        if ( addBtn ) {
+            addBtn.addEventListener( 'click', function ( e ) {
+                e.preventDefault();
+                addRule();
+            } );
+        }
+
+        document.addEventListener( 'change', function ( e ) {
+            if ( e.target && e.target.classList.contains( 'sch-rule-type' ) ) {
+                syncMatchControls( e.target.closest( 'tr' ) );
+            }
         } );
-    } );
+
+        document.addEventListener( 'click', function ( e ) {
+            var removeBtn = e.target.closest( '.sch-remove-rule' );
+            if ( removeBtn ) {
+                e.preventDefault();
+                var row = removeBtn.closest( 'tr' );
+                if ( row ) {
+                    row.remove();
+                }
+            }
+
+            var copyBtn = e.target.closest( '.sch-copy' );
+            if ( ! copyBtn ) {
+                return;
+            }
+            navigator.clipboard.writeText( copyBtn.dataset.url ).then( function () {
+                var original = copyBtn.textContent;
+                copyBtn.textContent = '<?php echo esc_js( __( 'Copied!', 'seo-campaign-hub' ) ); ?>';
+                setTimeout( function () { copyBtn.textContent = original; }, 1500 );
+            } );
+        } );
+    })();
 </script>

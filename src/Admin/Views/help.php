@@ -36,41 +36,38 @@ $shortcodes = [
 		<div class="seo-campaign-hub-content sch-help">
 
 			<section class="sch-help-section">
-				<h2><?php esc_html_e( 'Quick start', 'seo-campaign-hub' ); ?></h2>
-				<p><?php esc_html_e( 'Follow this order the first time you use the plugin:', 'seo-campaign-hub' ); ?></p>
+				<h2><?php esc_html_e( 'Quick start (WP post campaigns)', 'seo-campaign-hub' ); ?></h2>
+				<p><?php esc_html_e( 'Use normal WordPress posts/pages for SEO content. Use this plugin for short links, country/language routing, and analytics.', 'seo-campaign-hub' ); ?></p>
 				<ol class="sch-help-checklist">
 					<li>
+						<a href="<?php echo esc_url( admin_url( 'post-new.php' ) ); ?>">
+							<?php esc_html_e( 'Create SEO posts/pages', 'seo-campaign-hub' ); ?>
+						</a>
+						— <?php esc_html_e( 'one page per language if you need localized landings', 'seo-campaign-hub' ); ?>
+					</li>
+					<li>
+						<a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>">
+							<?php esc_html_e( 'Flush Permalinks', 'seo-campaign-hub' ); ?>
+						</a>
+						— <?php esc_html_e( 'Settings → Permalinks → Save Changes (once)', 'seo-campaign-hub' ); ?>
+					</li>
+					<li>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>">
-							<?php esc_html_e( 'Configure Settings', 'seo-campaign-hub' ); ?>
+							<?php esc_html_e( 'Confirm Localization settings', 'seo-campaign-hub' ); ?>
 						</a>
-					</li>
-					<li>
-						<a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=sch_offer' ) ); ?>">
-							<?php esc_html_e( 'Create an Offer', 'seo-campaign-hub' ); ?>
-						</a>
-						— <?php esc_html_e( 'the product or affiliate destination you promote', 'seo-campaign-hub' ); ?>
-					</li>
-					<li>
-						<a href="<?php echo esc_url( admin_url( 'post-new.php?post_type=sch_campaign' ) ); ?>">
-							<?php esc_html_e( 'Create a Campaign', 'seo-campaign-hub' ); ?>
-						</a>
-						— <?php esc_html_e( 'the landing page that presents the offer', 'seo-campaign-hub' ); ?>
+						— <?php esc_html_e( 'smart redirects + enabled languages', 'seo-campaign-hub' ); ?>
 					</li>
 					<li>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-shortener' ) ); ?>">
 							<?php esc_html_e( 'Create a Short Link', 'seo-campaign-hub' ); ?>
 						</a>
-						— <?php esc_html_e( 'track traffic into the campaign or offer', 'seo-campaign-hub' ); ?>
-					</li>
-					<li>
-						<a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-qr-codes' ) ); ?>">
-							<?php esc_html_e( 'Optional: generate a QR code', 'seo-campaign-hub' ); ?>
-						</a>
+						— <?php esc_html_e( 'default destination = your WP post URL; add language/country rules as needed', 'seo-campaign-hub' ); ?>
 					</li>
 					<li>
 						<a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-analytics' ) ); ?>">
 							<?php esc_html_e( 'Check Analytics', 'seo-campaign-hub' ); ?>
 						</a>
+						— <?php esc_html_e( 'clicks, country, and language', 'seo-campaign-hub' ); ?>
 					</li>
 				</ol>
 			</section>

@@ -86,6 +86,10 @@ class Settings {
                 'title' => __('QR Code Settings', 'seo-campaign-hub'),
                 'description' => __('Configure QR code generation.', 'seo-campaign-hub')
             ],
+            'localization' => [
+                'title' => __('Localization', 'seo-campaign-hub'),
+                'description' => __('Smart language and country redirects for short links (Europe, Americas, Middle East defaults).', 'seo-campaign-hub')
+            ],
             'advanced' => [
                 'title' => __('Advanced Settings', 'seo-campaign-hub'),
                 'description' => __('Advanced plugin settings.', 'seo-campaign-hub')
@@ -264,6 +268,70 @@ class Settings {
                 'title' => __('Default Background Color', 'seo-campaign-hub'),
                 'description' => __('Default QR code background color.', 'seo-campaign-hub'),
                 'default' => '#FFFFFF'
+            ],
+
+            // Localization
+            'enable_smart_redirects' => [
+                'section' => 'localization',
+                'type' => 'checkbox',
+                'title' => __('Enable Smart Redirects', 'seo-campaign-hub'),
+                'description' => __('Redirect short links by visitor language and/or country when rules are set.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'default_redirect_priority' => [
+                'section' => 'localization',
+                'type' => 'select',
+                'title' => __('Default Redirect Priority', 'seo-campaign-hub'),
+                'description' => __('When both language and country rules exist, which match type is tried first (can be overridden per link).', 'seo-campaign-hub'),
+                'options' => [
+                    'language' => __('Language first', 'seo-campaign-hub'),
+                    'country' => __('Country first', 'seo-campaign-hub'),
+                ],
+                'default' => 'language'
+            ],
+            'enabled_languages' => [
+                'section' => 'localization',
+                'type' => 'checkbox_group',
+                'title' => __('Enabled Languages', 'seo-campaign-hub'),
+                'description' => __('Languages available when creating short-link targeting rules.', 'seo-campaign-hub'),
+                'options' => [
+                    'en' => 'English (en)',
+                    'es' => 'Spanish (es)',
+                    'pt' => 'Portuguese (pt)',
+                    'fr' => 'French (fr)',
+                    'de' => 'German (de)',
+                    'it' => 'Italian (it)',
+                    'nl' => 'Dutch (nl)',
+                    'pl' => 'Polish (pl)',
+                    'ru' => 'Russian (ru)',
+                    'ar' => 'Arabic (ar)',
+                    'he' => 'Hebrew (he)',
+                    'tr' => 'Turkish (tr)',
+                    'fa' => 'Persian (fa)',
+                ],
+                'default' => ['en', 'es', 'pt', 'fr', 'de', 'it', 'nl', 'pl', 'ru', 'ar', 'he', 'tr', 'fa']
+            ],
+            'default_fallback_language' => [
+                'section' => 'localization',
+                'type' => 'select',
+                'title' => __('Default Fallback Language', 'seo-campaign-hub'),
+                'description' => __('Preferred language code for documentation and defaults (fallback URL is still the link destination).', 'seo-campaign-hub'),
+                'options' => [
+                    'en' => 'English (en)',
+                    'es' => 'Spanish (es)',
+                    'pt' => 'Portuguese (pt)',
+                    'fr' => 'French (fr)',
+                    'de' => 'German (de)',
+                    'it' => 'Italian (it)',
+                    'nl' => 'Dutch (nl)',
+                    'pl' => 'Polish (pl)',
+                    'ru' => 'Russian (ru)',
+                    'ar' => 'Arabic (ar)',
+                    'he' => 'Hebrew (he)',
+                    'tr' => 'Turkish (tr)',
+                    'fa' => 'Persian (fa)',
+                ],
+                'default' => 'en'
             ],
 
             // Advanced Settings
@@ -447,6 +515,29 @@ class Settings {
                 <?php endif;
                 break;
 
+            case 'checkbox_group':
+                $selected = is_array($value) ? $value : (array) ($field['default'] ?? []);
+                $options = isset($field['options']) && is_array($field['options']) ? $field['options'] : [];
+                echo '<fieldset><legend class="screen-reader-text"><span>' . esc_html($field['title']) . '</span></legend>';
+                foreach ($options as $option_value => $option_label) {
+                    $input_id = $field_id . '_' . $option_value;
+                    ?>
+                    <label for="<?php echo esc_attr($input_id); ?>" style="display:inline-block;min-width:180px;margin:0 12px 8px 0;">
+                        <input type="checkbox"
+                               id="<?php echo esc_attr($input_id); ?>"
+                               name="<?php echo esc_attr($name); ?>[]"
+                               value="<?php echo esc_attr($option_value); ?>"
+                               <?php checked(in_array($option_value, $selected, true)); ?> />
+                        <?php echo esc_html($option_label); ?>
+                    </label>
+                    <?php
+                }
+                echo '</fieldset>';
+                if (!empty($field['description'])) {
+                    echo '<p class="description">' . esc_html($field['description']) . '</p>';
+                }
+                break;
+
             default:
                 echo '<p>' . esc_html__('Unknown field type.', 'seo-campaign-hub') . '</p>';
         }
@@ -491,8 +582,31 @@ class Settings {
                     $sanitized[$field_id] = in_array($value, $allowed) ? $value : $field['default'];
                     break;
 
+                case 'checkbox_group':
+                    $allowed = array_keys($field['options'] ?? []);
+                    $values = is_array($value) ? $value : [];
+                    $clean = [];
+                    foreach ($values as $item) {
+                        $item = sanitize_text_field((string) $item);
+                        if (in_array($item, $allowed, true)) {
+                            $clean[] = $item;
+                        }
+                    }
+                    $sanitized[$field_id] = !empty($clean) ? array_values(array_unique($clean)) : ($field['default'] ?? []);
+                    break;
+
                 default:
                     $sanitized[$field_id] = sanitize_text_field($value);
+            }
+        }
+
+        // Unchecked checkbox groups submit nothing — restore empty only when field missing and was submitted form.
+        foreach ($this->fields as $field_id => $field) {
+            if (($field['type'] ?? '') === 'checkbox_group' && !isset($input[$field_id])) {
+                $sanitized[$field_id] = [];
+            }
+            if (($field['type'] ?? '') === 'checkbox' && !isset($input[$field_id])) {
+                $sanitized[$field_id] = '0';
             }
         }
 

@@ -45,6 +45,7 @@ class AdminInit {
         add_action( 'admin_menu',          [ $this, 'add_admin_menu' ] );
         add_action( 'admin_head',          [ $this, 'add_admin_styles' ] );
         add_action( 'admin_footer',        [ $this, 'add_admin_footer_scripts' ] );
+        add_action( 'admin_notices',       [ $this, 'render_setup_notice' ] );
 
         // URL Shortener page form handlers (admin-post.php)
         add_action( 'admin_post_sch_shortener_create', [ $this, 'handle_shortener_create' ] );
@@ -59,6 +60,70 @@ class AdminInit {
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
             [ $this, 'add_action_links' ]
         );
+    }
+
+    /**
+     * Show a one-time setup notice for WP post + short link campaigns.
+     *
+     * @return void
+     */
+    public function render_setup_notice(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        if ( ! get_transient( 'seo_campaign_hub_show_setup_notice' ) ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended -- checked below.
+        if ( isset( $_GET['sch_dismiss_setup'], $_GET['_wpnonce'] )
+            && wp_verify_nonce( sanitize_text_field( wp_unslash( $_GET['_wpnonce'] ) ), 'sch_dismiss_setup' )
+        ) {
+            delete_transient( 'seo_campaign_hub_show_setup_notice' );
+            return;
+        }
+
+        $dismiss_url = wp_nonce_url(
+            add_query_arg( 'sch_dismiss_setup', '1' ),
+            'sch_dismiss_setup'
+        );
+        ?>
+        <div class="notice notice-success is-dismissible">
+            <p>
+                <strong><?php esc_html_e( 'SEO Campaign Hub 1.1.0 is ready.', 'seo-campaign-hub' ); ?></strong>
+                <?php esc_html_e( 'Recommended workflow for WP post campaigns:', 'seo-campaign-hub' ); ?>
+            </p>
+            <ol style="margin-left:1.5em">
+                <li><?php esc_html_e( 'Create your SEO landing posts/pages (one per language if needed).', 'seo-campaign-hub' ); ?></li>
+                <li>
+                    <a href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>">
+                        <?php esc_html_e( 'Settings → Permalinks → Save Changes', 'seo-campaign-hub' ); ?>
+                    </a>
+                    <?php esc_html_e( '(flush rewrite rules once)', 'seo-campaign-hub' ); ?>
+                </li>
+                <li>
+                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-shortener' ) ); ?>">
+                        <?php esc_html_e( 'Create a short link', 'seo-campaign-hub' ); ?>
+                    </a>
+                    <?php esc_html_e( 'pointing to your post, plus optional language/country rules.', 'seo-campaign-hub' ); ?>
+                </li>
+                <li>
+                    <a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-analytics' ) ); ?>">
+                        <?php esc_html_e( 'Track country + language in Analytics', 'seo-campaign-hub' ); ?>
+                    </a>
+                </li>
+            </ol>
+            <p>
+                <a class="button button-primary" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-shortener' ) ); ?>">
+                    <?php esc_html_e( 'Open URL Shortener', 'seo-campaign-hub' ); ?>
+                </a>
+                <a class="button" href="<?php echo esc_url( $dismiss_url ); ?>">
+                    <?php esc_html_e( 'Dismiss', 'seo-campaign-hub' ); ?>
+                </a>
+            </p>
+        </div>
+        <?php
     }
 
     // =========================================================
@@ -184,6 +249,9 @@ class AdminInit {
                 'limit'     => 100,
             ] ),
             'prefix'     => get_option( 'seo_campaign_hub_shortener_prefix', 'go' ),
+            'enabled_languages' => $shortener->get_enabled_languages(),
+            'default_priority'  => $shortener->get_default_redirect_priority(),
+            'smart_redirects_enabled' => $shortener->is_smart_redirects_enabled(),
         ] );
     }
 
@@ -568,6 +636,16 @@ class AdminInit {
             if ( ! empty( $_POST[ $field ] ) ) {
                 $data[ $field ] = sanitize_text_field( wp_unslash( $_POST[ $field ] ) );
             }
+        }
+
+        if ( ! empty( $_POST['redirect_priority'] ) ) {
+            $data['redirect_priority'] = sanitize_text_field( wp_unslash( $_POST['redirect_priority'] ) );
+        }
+
+        // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized -- sanitized via ShortenerService.
+        $raw_rules = isset( $_POST['targeting_rules'] ) ? wp_unslash( $_POST['targeting_rules'] ) : [];
+        if ( is_array( $raw_rules ) ) {
+            $data['targeting_rules'] = $shortener->sanitize_targeting_rules( $raw_rules );
         }
 
         $short_url = $shortener->shorten_url( $destination, $slug, $data );
