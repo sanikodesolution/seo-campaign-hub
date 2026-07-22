@@ -385,6 +385,10 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ## Changelog
 
+### 1.1.2
+
+- Fix WordPress not loading after plugin install (safer boot + admin-only migrations)
+
 ### 1.1.1
 
 - Fix critical error on admin dashboard during schema upgrade on some hosts

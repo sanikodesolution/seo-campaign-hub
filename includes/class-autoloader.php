@@ -93,19 +93,12 @@ class Autoloader {
             $relative = substr( $class, strlen( $namespace ) );
             $file     = $base_dir . str_replace( '\\', DIRECTORY_SEPARATOR, $relative ) . '.php';
 
-            if ( file_exists( $file ) ) {
-                require_once $file;
+            $resolved = self::resolve_file( $file );
+            if ( null !== $resolved ) {
+                require_once $resolved;
                 return true;
             }
 
-            // Fallback for legacy lowercase file names (e.g. plugin.php vs Plugin.php).
-            $fallback = self::find_case_insensitive_file( $file );
-            if ( null !== $fallback ) {
-                require_once $fallback;
-                return true;
-            }
-
-            // Log missing file in WP_DEBUG mode to help diagnose issues
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log( sprintf( 'SEO Campaign Hub Autoloader: file not found for class %s → %s', $class, $file ) );
@@ -113,6 +106,29 @@ class Autoloader {
         }
 
         return false;
+    }
+
+    /**
+     * Resolve a class file path, including lowercase legacy filenames.
+     *
+     * @param string $file Expected absolute file path.
+     * @return string|null
+     */
+    private static function resolve_file( string $file ): ?string {
+        if ( is_readable( $file ) ) {
+            return $file;
+        }
+
+        $directory = dirname( $file );
+        $basename  = basename( $file );
+
+        // Fast path: common WordPress legacy lowercase class files (no glob needed).
+        $lowercase = $directory . DIRECTORY_SEPARATOR . strtolower( $basename );
+        if ( $lowercase !== $file && is_readable( $lowercase ) ) {
+            return $lowercase;
+        }
+
+        return self::find_case_insensitive_file( $file );
     }
 
     /**
@@ -128,11 +144,28 @@ class Autoloader {
         }
 
         $expected = strtolower( basename( $file ) );
-        $matches  = glob( $directory . DIRECTORY_SEPARATOR . '*.php' );
 
-        foreach ( $matches as $candidate ) {
-            if ( strtolower( basename( $candidate ) ) === $expected ) {
-                return $candidate;
+        // Prefer scandir — available even when glob() is disabled on some hosts.
+        $entries = @scandir( $directory ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+        if ( is_array( $entries ) ) {
+            foreach ( $entries as $entry ) {
+                if ( substr( $entry, -4 ) !== '.php' ) {
+                    continue;
+                }
+                if ( strtolower( $entry ) === $expected ) {
+                    return $directory . DIRECTORY_SEPARATOR . $entry;
+                }
+            }
+        }
+
+        if ( function_exists( 'glob' ) ) {
+            $matches = glob( $directory . DIRECTORY_SEPARATOR . '*.php' );
+            if ( is_array( $matches ) ) {
+                foreach ( $matches as $candidate ) {
+                    if ( strtolower( basename( $candidate ) ) === $expected ) {
+                        return $candidate;
+                    }
+                }
             }
         }
 

@@ -219,12 +219,18 @@ final class Plugin {
      * @return void
      */
     private function load_services(): void {
-        $this->container->get( 'database' )->init();
-        $this->container->get( 'security' )->init();
-        $this->container->get( 'performance' )->init();
-        $this->container->get( 'cache' )->init();
-        $this->container->get( 'schema' )->init();
-        $this->container->get( 'analytics' )->init();
+        $services = [ 'database', 'security', 'performance', 'cache', 'schema', 'analytics' ];
+
+        foreach ( $services as $service ) {
+            try {
+                $this->container->get( $service )->init();
+            } catch ( \Throwable $e ) {
+                if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                    // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                    error_log( 'SEO Campaign Hub service "' . $service . '" failed: ' . $e->getMessage() );
+                }
+            }
+        }
 
         /**
          * Fires after core services are loaded.

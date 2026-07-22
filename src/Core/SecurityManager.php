@@ -67,11 +67,8 @@ class SecurityManager {
         $data['count']++;
 
         if ($data['count'] > $limit) {
-            wp_die(
-                esc_html__('Rate limit exceeded. Please try again later.', 'seo-campaign-hub'),
-                esc_html__('Rate Limit Exceeded', 'seo-campaign-hub'),
-                ['response' => 429]
-            );
+            // Soft limit only — never white-screen the site with wp_die().
+            return;
         }
 
         // Keep the window fixed: expire at window_start + 1 hour instead of

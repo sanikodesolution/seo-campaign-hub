@@ -22,7 +22,7 @@ class Database {
      *
      * @var string
      */
-    private $db_version = '1.1.1';
+    private $db_version = '1.1.2';
 
     /**
      * Table prefix
@@ -61,33 +61,41 @@ class Database {
      * @return void
      */
     public function init() {
+        // Never run schema upgrades on the public front-end — a failed ALTER
+        // must not take down the whole WordPress site.
+        if ( ! is_admin() && ! ( defined( 'WP_CLI' ) && WP_CLI ) ) {
+            return;
+        }
+
         try {
-            $installed_version = get_option('seo_campaign_hub_db_version', '0.0.0');
+            $installed_version = get_option( 'seo_campaign_hub_db_version', '0.0.0' );
 
-            if (version_compare((string) $installed_version, $this->db_version, '<')) {
-                $this->upgrade($installed_version);
+            if ( version_compare( (string) $installed_version, $this->db_version, '<' ) ) {
+                $this->upgrade( $installed_version );
             }
 
-            // If a previous failed upgrade marked the schema done too early, retry.
-            if (!$this->has_localization_columns()) {
-                delete_option('seo_campaign_hub_schema_1_1_0');
+            if ( ! $this->has_localization_columns() ) {
+                delete_option( 'seo_campaign_hub_schema_1_1_0' );
             }
 
-            // Guarantee 1.1.0 columns after zip upload without relying only on activate.
-            if (get_option('seo_campaign_hub_schema_1_1_0') !== 'yes') {
-                require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/MigrationInterface.php';
-                require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
-                (new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0())->up();
-                if ($this->has_localization_columns()) {
-                    update_option('seo_campaign_hub_schema_1_1_0', 'yes');
-                    update_option('seo_campaign_hub_db_version', $this->db_version);
-                    set_transient('seo_campaign_hub_show_setup_notice', '1.1.0', WEEK_IN_SECONDS);
+            if ( get_option( 'seo_campaign_hub_schema_1_1_0' ) !== 'yes' ) {
+                $interface = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/MigrationInterface.php';
+                $migration = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
+                if ( is_readable( $interface ) && is_readable( $migration ) ) {
+                    require_once $interface;
+                    require_once $migration;
+                    ( new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0() )->up();
+                }
+                if ( $this->has_localization_columns() ) {
+                    update_option( 'seo_campaign_hub_schema_1_1_0', 'yes' );
+                    update_option( 'seo_campaign_hub_db_version', $this->db_version );
+                    set_transient( 'seo_campaign_hub_show_setup_notice', '1.1.2', WEEK_IN_SECONDS );
                 }
             }
-        } catch (\Throwable $e) {
-            if (defined('WP_DEBUG') && WP_DEBUG) {
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log('SEO Campaign Hub database init failed: ' . $e->getMessage());
+                error_log( 'SEO Campaign Hub database init failed: ' . $e->getMessage() );
             }
         }
     }

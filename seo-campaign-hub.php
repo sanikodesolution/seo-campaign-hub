@@ -3,7 +3,7 @@
  * Plugin Name: SEO Campaign Hub
  * Plugin URI: https://seocampaignhub.com
  * Description: Advanced SEO landing page builder with affiliate marketing, URL shortening, analytics, and campaign management
- * Version: 1.1.1
+ * Version: 1.1.2
  * Author: SANI UL HASSAN
  * Author URI: https://seocampaignhub.com
  * License: GPL v2 or later
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // ============================================
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ) {
-    define( 'SEO_CAMPAIGN_HUB_VERSION', '1.1.1' );
+    define( 'SEO_CAMPAIGN_HUB_VERSION', '1.1.2' );
 }
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_PLUGIN_DIR' ) ) {
@@ -152,21 +152,39 @@ register_deactivation_hook(
 add_action( 'plugins_loaded', 'seo_campaign_hub_boot', 10 );
 
 function seo_campaign_hub_boot() {
+    try {
+        if ( ! defined( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX' ) ) {
+            global $wpdb;
+            define( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX', $wpdb->prefix . 'sch_' );
+        }
 
-    if ( ! defined( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX' ) ) {
-        global $wpdb;
-        define( 'SEO_CAMPAIGN_HUB_TABLE_PREFIX', $wpdb->prefix . 'sch_' );
+        load_plugin_textdomain(
+            'seo-campaign-hub',
+            false,
+            dirname( SEO_CAMPAIGN_HUB_PLUGIN_BASENAME ) . '/languages'
+        );
+
+        $GLOBALS['seo_campaign_hub'] = \SEO_Campaign_Hub\Core\Plugin::get_instance();
+
+        do_action( 'seo_campaign_hub_loaded', $GLOBALS['seo_campaign_hub'] );
+    } catch ( \Throwable $e ) {
+        // Never take down WordPress if the plugin fails to boot.
+        if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log( 'SEO Campaign Hub boot failed: ' . $e->getMessage() );
+        }
+        add_action(
+            'admin_notices',
+            static function () use ( $e ) {
+                if ( ! current_user_can( 'activate_plugins' ) ) {
+                    return;
+                }
+                echo '<div class="notice notice-error"><p><strong>SEO Campaign Hub:</strong> ';
+                echo esc_html( $e->getMessage() );
+                echo '</p></div>';
+            }
+        );
     }
-
-    load_plugin_textdomain(
-        'seo-campaign-hub',
-        false,
-        dirname( SEO_CAMPAIGN_HUB_PLUGIN_BASENAME ) . '/languages'
-    );
-
-    $GLOBALS['seo_campaign_hub'] = \SEO_Campaign_Hub\Core\Plugin::get_instance();
-
-    do_action( 'seo_campaign_hub_loaded', $GLOBALS['seo_campaign_hub'] );
 }
 
 // ============================================

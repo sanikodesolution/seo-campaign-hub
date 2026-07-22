@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.2 - 2026-07-22
+- Prevent plugin boot failures from taking down the whole WordPress site
+- Run DB schema upgrades only in admin/CLI (not on frontend)
+- Harden autoloader for case-sensitive hosts / disabled glob()
+- Defer analytics cookies until tracking runs
+- Soft rate-limit (no wp_die white-screen)
+
 ## 1.1.1 - 2026-07-22
 - Fix critical admin crash on hosts where JSON/ENUM ALTER or DDL transactions fail
 - Safer migration runner (no site-wide fatal on schema upgrade)

@@ -51,8 +51,23 @@ class AnalyticsService {
     public function __construct() {
         $this->db = new \SEO_Campaign_Hub\Database\Database();
         $this->cache = new \SEO_Campaign_Hub\Core\CacheManager();
-        $this->session_id = $this->get_session_id();
-        $this->visitor_id = $this->get_visitor_id();
+        // Lazy — do not touch cookies during plugins_loaded (can break boot).
+        $this->session_id = '';
+        $this->visitor_id = '';
+    }
+
+    /**
+     * Ensure session/visitor IDs exist when tracking runs.
+     *
+     * @return void
+     */
+    private function ensure_visitor_context() {
+        if ($this->session_id === '') {
+            $this->session_id = $this->get_session_id();
+        }
+        if ($this->visitor_id === '') {
+            $this->visitor_id = $this->get_visitor_id();
+        }
     }
 
     /**
@@ -128,6 +143,8 @@ class AnalyticsService {
         if (!$this->is_enabled()) {
             return false;
         }
+
+        $this->ensure_visitor_context();
 
         if ($this->get_option_bool('ignore_bots', true) && $this->is_bot()) {
             return false;
