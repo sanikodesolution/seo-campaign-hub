@@ -385,6 +385,10 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ## Changelog
 
+### 1.1.1
+
+- Fix critical error on admin dashboard during schema upgrade on some hosts
+
 ### 1.1.0
 
 - Smart language / country redirects for short links

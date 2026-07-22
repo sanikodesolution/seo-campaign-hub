@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.1 - 2026-07-22
+- Fix critical admin crash on hosts where JSON/ENUM ALTER or DDL transactions fail
+- Safer migration runner (no site-wide fatal on schema upgrade)
+- Use LONGTEXT/VARCHAR for targeting columns for broader MySQL/MariaDB support
+
 ## 1.1.0 - 2026-07-22
 - Smart language / country redirects for short links
 - Default Localization language pack (Europe, Americas, Middle East)

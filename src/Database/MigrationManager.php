@@ -62,16 +62,10 @@ class MigrationManager {
             return;
         }
 
-        $this->wpdb->query('START TRANSACTION');
-
-        try {
-            foreach ($migrations as $migration) {
-                $this->run_migration($migration);
-            }
-            $this->wpdb->query('COMMIT');
-        } catch (\Exception $e) {
-            $this->wpdb->query('ROLLBACK');
-            throw $e;
+        // Do not wrap DDL (ALTER TABLE) in a transaction — MySQL commits DDL implicitly
+        // and failed transactions can take down the whole admin request.
+        foreach ($migrations as $migration) {
+            $this->run_migration($migration);
         }
     }
 

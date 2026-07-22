@@ -102,17 +102,18 @@ class Activator {
         // dbDelta does not always add ENUM/JSON columns on existing installs.
         // Run versioned migrations, then force the 1.1.0 ALTER (idempotent).
         $installed = (string) get_option( 'seo_campaign_hub_db_version', '0.0.0' );
-        if ( version_compare( $installed, SEO_CAMPAIGN_HUB_VERSION, '<' ) ) {
-            try {
+        try {
+            if ( version_compare( $installed, SEO_CAMPAIGN_HUB_VERSION, '<' ) ) {
                 ( new \SEO_Campaign_Hub\Database\MigrationManager() )->upgrade( $installed, SEO_CAMPAIGN_HUB_VERSION );
-            } catch ( \Throwable $e ) {
-                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
-                error_log( 'SEO Campaign Hub — migration error: ' . $e->getMessage() );
             }
-        }
 
-        require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
-        ( new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0() )->up();
+            require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/MigrationInterface.php';
+            require_once SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Database/Migrations/Version_1_1_0.php';
+            ( new \SEO_Campaign_Hub\Database\Migrations\Version_1_1_0() )->up();
+        } catch ( \Throwable $e ) {
+            // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+            error_log( 'SEO Campaign Hub — migration error: ' . $e->getMessage() );
+        }
 
         update_option( 'seo_campaign_hub_db_version', SEO_CAMPAIGN_HUB_VERSION );
         update_option( 'seo_campaign_hub_schema_1_1_0', 'yes' );
@@ -234,8 +235,8 @@ class Activator {
                 description TEXT DEFAULT NULL,
                 link_type ENUM('direct','cloaked','affiliate','cpa','tracking') DEFAULT 'direct',
                 redirect_type ENUM('301','302','307') DEFAULT '301',
-                redirect_priority ENUM('language','country') DEFAULT 'language',
-                targeting_rules JSON DEFAULT NULL,
+                redirect_priority VARCHAR(20) DEFAULT 'language',
+                targeting_rules LONGTEXT DEFAULT NULL,
                 is_active TINYINT(1) DEFAULT 1,
                 is_public TINYINT(1) DEFAULT 1,
                 utm_source VARCHAR(255) DEFAULT NULL,
