@@ -66,6 +66,139 @@ $sch_country_flag = static function ( $code ) {
 	return $flag;
 };
 
+/**
+ * Resolve a full country name for hover tooltips.
+ *
+ * @param string $code ISO 3166-1 alpha-2 code.
+ * @return string
+ */
+$sch_country_name = static function ( $code ) {
+	$code = strtoupper( trim( (string) $code ) );
+	if ( strlen( $code ) !== 2 || ! ctype_alpha( $code ) ) {
+		return '';
+	}
+
+	if ( class_exists( 'Locale' ) ) {
+		$display = \Locale::getDisplayRegion( 'und_' . $code, get_user_locale() );
+		if ( is_string( $display ) && '' !== $display && strtoupper( $display ) !== $code ) {
+			return $display;
+		}
+	}
+
+	$fallback = [
+		'BD' => 'Bangladesh',
+		'US' => 'United States',
+		'HK' => 'Hong Kong',
+		'DE' => 'Germany',
+		'GB' => 'United Kingdom',
+		'IT' => 'Italy',
+		'JP' => 'Japan',
+		'FR' => 'France',
+		'PL' => 'Poland',
+		'PR' => 'Puerto Rico',
+		'CA' => 'Canada',
+		'AU' => 'Australia',
+		'IN' => 'India',
+		'ES' => 'Spain',
+		'BR' => 'Brazil',
+		'MX' => 'Mexico',
+		'NL' => 'Netherlands',
+		'RU' => 'Russia',
+		'TR' => 'Turkey',
+		'SA' => 'Saudi Arabia',
+		'AE' => 'United Arab Emirates',
+		'IL' => 'Israel',
+		'CN' => 'China',
+		'TW' => 'Taiwan',
+		'KR' => 'South Korea',
+		'SG' => 'Singapore',
+		'MY' => 'Malaysia',
+		'TH' => 'Thailand',
+		'PH' => 'Philippines',
+		'ID' => 'Indonesia',
+		'VN' => 'Vietnam',
+		'PK' => 'Pakistan',
+		'NG' => 'Nigeria',
+		'ZA' => 'South Africa',
+		'EG' => 'Egypt',
+		'SE' => 'Sweden',
+		'NO' => 'Norway',
+		'DK' => 'Denmark',
+		'FI' => 'Finland',
+		'CH' => 'Switzerland',
+		'AT' => 'Austria',
+		'BE' => 'Belgium',
+		'IE' => 'Ireland',
+		'PT' => 'Portugal',
+		'CZ' => 'Czechia',
+		'RO' => 'Romania',
+		'UA' => 'Ukraine',
+		'AR' => 'Argentina',
+		'CL' => 'Chile',
+		'CO' => 'Colombia',
+		'NZ' => 'New Zealand',
+	];
+
+	return $fallback[ $code ] ?? $code;
+};
+
+/**
+ * Resolve a full language name for hover tooltips.
+ *
+ * @param string $code ISO 639-1 language code.
+ * @return string
+ */
+$sch_language_name = static function ( $code ) {
+	$code = strtolower( trim( (string) $code ) );
+	if ( strlen( $code ) !== 2 || ! ctype_alpha( $code ) ) {
+		return '';
+	}
+
+	if ( class_exists( 'Locale' ) ) {
+		$display = \Locale::getDisplayLanguage( $code, get_user_locale() );
+		if ( is_string( $display ) && '' !== $display && strtolower( $display ) !== $code ) {
+			return $display;
+		}
+	}
+
+	$fallback = [
+		'en' => 'English',
+		'es' => 'Spanish',
+		'pt' => 'Portuguese',
+		'fr' => 'French',
+		'de' => 'German',
+		'it' => 'Italian',
+		'nl' => 'Dutch',
+		'pl' => 'Polish',
+		'ru' => 'Russian',
+		'ar' => 'Arabic',
+		'he' => 'Hebrew',
+		'tr' => 'Turkish',
+		'fa' => 'Persian',
+		'zh' => 'Chinese',
+		'ja' => 'Japanese',
+		'ko' => 'Korean',
+		'hi' => 'Hindi',
+		'bn' => 'Bengali',
+		'ur' => 'Urdu',
+		'th' => 'Thai',
+		'vi' => 'Vietnamese',
+		'id' => 'Indonesian',
+		'ms' => 'Malay',
+		'sv' => 'Swedish',
+		'no' => 'Norwegian',
+		'da' => 'Danish',
+		'fi' => 'Finnish',
+		'cs' => 'Czech',
+		'ro' => 'Romanian',
+		'uk' => 'Ukrainian',
+		'el' => 'Greek',
+		'hu' => 'Hungarian',
+	];
+
+	return $fallback[ $code ] ?? strtoupper( $code );
+};
+
 $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 ?>
 <div class="wrap">
@@ -319,13 +452,20 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 								$count = (int) ( $row['count'] ?? 0 );
 								$pct   = $max_country > 0 ? round( ( $count / $max_country ) * 100 ) : 0;
 								$flag  = $sch_country_flag( $code );
+								$name  = $sch_country_name( $code );
 								?>
 								<tr>
 									<td>
 										<?php if ( '' !== $flag ) : ?>
 											<span class="sch-country-flag" aria-hidden="true"><?php echo esc_html( $flag ); ?></span>
 										<?php endif; ?>
-										<code><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code>
+										<code
+											class="sch-code-tip"
+											<?php if ( '' !== $name ) : ?>
+												title="<?php echo esc_attr( $name ); ?>"
+												aria-label="<?php echo esc_attr( $name ); ?>"
+											<?php endif; ?>
+										><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code>
 									</td>
 									<td><?php echo esc_html( number_format_i18n( $count ) ); ?></td>
 									<td>
@@ -361,9 +501,18 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 								$code  = strtolower( (string) ( $row['language'] ?? '' ) );
 								$count = (int) ( $row['count'] ?? 0 );
 								$pct   = $max_language > 0 ? round( ( $count / $max_language ) * 100 ) : 0;
+								$name  = $sch_language_name( $code );
 								?>
 								<tr>
-									<td><code><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code></td>
+									<td>
+										<code
+											class="sch-code-tip"
+											<?php if ( '' !== $name ) : ?>
+												title="<?php echo esc_attr( $name ); ?>"
+												aria-label="<?php echo esc_attr( $name ); ?>"
+											<?php endif; ?>
+										><?php echo esc_html( '' !== $code ? $code : '—' ); ?></code>
+									</td>
 									<td><?php echo esc_html( number_format_i18n( $count ) ); ?></td>
 									<td>
 										<div class="sch-bar" role="img" aria-label="<?php echo esc_attr( $count . ' events' ); ?>">
@@ -391,4 +540,11 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 	.sch-analytics-trend td { vertical-align:middle; }
 	.sch-analytics-countries td { vertical-align:middle; }
 	.sch-country-flag { font-size:16px; margin-right:6px; line-height:1; }
+	.sch-code-tip {
+		cursor: help;
+		border-bottom: 1px dotted currentColor;
+	}
+	.sch-analytics-countries code.sch-code-tip:hover {
+		background: #dcdcde;
+	}
 </style>
