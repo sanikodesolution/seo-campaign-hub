@@ -353,7 +353,17 @@ class AdminInit {
 
     /** @return void */
     public function render_settings(): void {
-        $this->render_view( 'settings', [ 'page_title' => __( 'Settings', 'seo-campaign-hub' ) ] );
+        $settings = null;
+        try {
+            $settings = $this->container->get( 'settings' );
+        } catch ( \Throwable $e ) {
+            $settings = null;
+        }
+
+        $this->render_view( 'settings', [
+            'page_title' => __( 'Settings', 'seo-campaign-hub' ),
+            'settings'   => $settings,
+        ] );
     }
 
     /** @return void */

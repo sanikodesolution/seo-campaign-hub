@@ -44,10 +44,13 @@ class Settings {
      * @return void
      */
     public function init() {
-        add_action('admin_init', [$this, 'register_settings']);
         $this->load_options();
         $this->define_sections();
         $this->define_fields();
+
+        // Called from Plugin::on_admin_init(), so register immediately
+        // instead of re-hooking admin_init (which would miss this request).
+        $this->register_settings();
     }
 
     /**
@@ -351,7 +354,8 @@ class Settings {
                 'type' => 'textarea',
                 'title' => __('ads.txt Content', 'seo-campaign-hub'),
                 'description' => __('Paste your Google AdSense ads.txt content here. Get it from your AdSense account → Sites → Ads.txt.', 'seo-campaign-hub'),
-                'default' => ''
+                'default' => '',
+                'rows' => 10
             ],
 
             // Advanced Settings
@@ -528,8 +532,8 @@ class Settings {
                 ?>
                 <textarea id="<?php echo esc_attr($field_id); ?>"
                           name="<?php echo esc_attr($name); ?>"
-                          rows="5"
-                          class="large-text"><?php echo esc_textarea($value); ?></textarea>
+                          rows="<?php echo esc_attr( (string) ( $field['rows'] ?? 5 ) ); ?>"
+                          class="large-text code"><?php echo esc_textarea($value); ?></textarea>
                 <?php if (!empty($field['description'])): ?>
                     <p class="description"><?php echo esc_html($field['description']); ?></p>
                 <?php endif;
