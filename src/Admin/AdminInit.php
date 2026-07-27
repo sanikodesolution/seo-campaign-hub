@@ -56,6 +56,12 @@ class AdminInit {
         add_action( 'admin_post_sch_export_data', [ $this, 'handle_export_data' ] );
         add_action( 'admin_post_sch_import_data', [ $this, 'handle_import_data' ] );
 
+        add_action( 'admin_post_sch_cloud_backup_settings', [ $this, 'handle_cloud_backup_settings' ] );
+        add_action( 'admin_post_sch_cloud_backup_now', [ $this, 'handle_cloud_backup_now' ] );
+        add_action( 'admin_post_sch_cloud_backup_schedule', [ $this, 'handle_cloud_backup_schedule' ] );
+        add_action( 'admin_post_sch_google_disconnect', [ $this, 'handle_google_disconnect' ] );
+        add_action( 'admin_init', [ $this, 'maybe_handle_google_oauth_callback' ] );
+
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
             [ $this, 'add_action_links' ]
@@ -217,6 +223,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-import-export',
             [ $this, 'render_import_export' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Cloud Backup', 'seo-campaign-hub' ),
+            __( 'Cloud Backup', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-cloud-backup',
+            [ $this, 'render_cloud_backup' ]
         );
 
         add_submenu_page(
@@ -387,6 +402,32 @@ class AdminInit {
         ] );
     }
 
+    /** @return void */
+    public function render_cloud_backup(): void {
+        $drive         = null;
+        $cloud_backup  = null;
+        try {
+            $drive         = $this->container->get( 'google_drive' );
+            $cloud_backup  = $this->container->get( 'cloud_backup' );
+        } catch ( \Throwable $e ) {
+            $drive         = null;
+            $cloud_backup  = null;
+        }
+
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended
+        $notice  = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+        $message = isset( $_GET['sch_message'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['sch_message'] ) ) ) : '';
+        // phpcs:enable
+
+        $this->render_view( 'cloud-backup', [
+            'page_title'   => __( 'Cloud Backup', 'seo-campaign-hub' ),
+            'drive'        => $drive,
+            'cloud_backup' => $cloud_backup,
+            'notice'       => $notice,
+            'message'      => $message,
+        ] );
+    }
+
     /**
      * Count short links safely.
      *
@@ -503,6 +544,152 @@ class AdminInit {
             add_query_arg( $args, admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) )
         );
         exit;
+    }
+
+    /**
+     * Redirect to Cloud Backup admin page.
+     *
+     * @param array<string, string> $args Query args.
+     * @return void
+     */
+    private function redirect_to_cloud_backup( array $args = [] ): void {
+        wp_safe_redirect(
+            add_query_arg( $args, admin_url( 'admin.php?page=seo-campaign-hub-cloud-backup' ) )
+        );
+        exit;
+    }
+
+    /**
+     * Complete Google OAuth when user returns from Google.
+     *
+     * @return void
+     */
+    public function maybe_handle_google_oauth_callback(): void {
+        if ( ! is_admin() || ! current_user_can( 'manage_options' ) ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! isset( $_GET['page'] ) || 'seo-campaign-hub-cloud-backup' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( ! isset( $_GET['code'] ) ) {
+            return;
+        }
+
+        try {
+            $drive  = $this->container->get( 'google_drive' );
+            $result = $drive->handle_oauth_callback();
+        } catch ( \Throwable $e ) {
+            $this->redirect_to_cloud_backup(
+                [
+                    'sch_notice'  => 'oauth_fail',
+                    'sch_message' => rawurlencode( $e->getMessage() ),
+                ]
+            );
+        }
+
+        $this->redirect_to_cloud_backup(
+            [
+                'sch_notice'  => ! empty( $result['success'] ) ? 'oauth_ok' : 'oauth_fail',
+                'sch_message' => rawurlencode( (string) ( $result['message'] ?? '' ) ),
+            ]
+        );
+    }
+
+    /**
+     * Save Google Drive / folder settings.
+     *
+     * @return void
+     */
+    public function handle_cloud_backup_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_cloud_backup_settings' );
+
+        $drive = $this->container->get( 'google_drive' );
+
+        $drive->update_settings(
+            [
+                'google_client_id'     => isset( $_POST['google_client_id'] ) ? sanitize_text_field( wp_unslash( $_POST['google_client_id'] ) ) : '',
+                'google_client_secret' => isset( $_POST['google_client_secret'] ) ? sanitize_text_field( wp_unslash( $_POST['google_client_secret'] ) ) : '',
+                'parent_folder'        => isset( $_POST['parent_folder'] ) ? sanitize_text_field( wp_unslash( $_POST['parent_folder'] ) ) : 'seo-campaign-hub-backups',
+                'subfolder'            => isset( $_POST['subfolder'] ) ? sanitize_text_field( wp_unslash( $_POST['subfolder'] ) ) : $drive->default_site_folder_name(),
+                'retention'            => isset( $_POST['retention'] ) ? max( 1, min( 50, absint( $_POST['retention'] ) ) ) : 5,
+            ]
+        );
+
+        $this->redirect_to_cloud_backup( [ 'sch_notice' => 'saved' ] );
+    }
+
+    /**
+     * Manual backup to Google Drive.
+     *
+     * @return void
+     */
+    public function handle_cloud_backup_now(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_cloud_backup_now' );
+
+        $result = $this->container->get( 'cloud_backup' )->run_plugin_backup();
+
+        $this->redirect_to_cloud_backup(
+            [
+                'sch_notice'  => ! empty( $result['success'] ) ? 'backup_ok' : 'backup_fail',
+                'sch_message' => rawurlencode( (string) ( $result['message'] ?? '' ) ),
+            ]
+        );
+    }
+
+    /**
+     * Save backup schedule and reschedule cron.
+     *
+     * @return void
+     */
+    public function handle_cloud_backup_schedule(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_cloud_backup_schedule' );
+
+        $drive = $this->container->get( 'google_drive' );
+        $freq  = isset( $_POST['schedule_frequency'] ) ? sanitize_key( wp_unslash( $_POST['schedule_frequency'] ) ) : 'daily';
+        if ( ! in_array( $freq, [ 'daily', 'weekly' ], true ) ) {
+            $freq = 'daily';
+        }
+
+        $drive->update_settings(
+            [
+                'schedule_enabled'    => ! empty( $_POST['schedule_enabled'] ) ? '1' : '0',
+                'schedule_frequency'  => $freq,
+            ]
+        );
+
+        $this->container->get( 'backup_scheduler' )->reschedule();
+
+        $this->redirect_to_cloud_backup( [ 'sch_notice' => 'saved' ] );
+    }
+
+    /**
+     * Disconnect Google Drive.
+     *
+     * @return void
+     */
+    public function handle_google_disconnect(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_google_disconnect' );
+
+        $this->container->get( 'google_drive' )->disconnect();
+        $this->container->get( 'backup_scheduler' )->clear();
+
+        $this->redirect_to_cloud_backup( [ 'sch_notice' => 'disconnected' ] );
     }
 
     /** @return void */

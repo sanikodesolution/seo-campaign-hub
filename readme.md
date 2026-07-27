@@ -14,7 +14,9 @@ Use it to:
 - Generate QR codes for campaigns and links
 - Track clicks, page views, and conversions
 - Add schema markup and SEO meta automatically
+- Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
+- Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
 
 ## Requirements
 
@@ -56,8 +58,9 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **URL Shortener** | Create and manage short tracking links |
 | **QR Codes** | Generate and manage QR codes |
 | **Analytics** | View traffic, clicks, and conversion data |
-| **Settings** | Configure SEO, analytics, shortener, QR, and performance options |
-| **Import/Export** | Backup or move campaign/offer data |
+| **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, localization, and performance options |
+| **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
+| **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
 | **Help** | In-plugin help and support notes |
 
 You can also reach the Dashboard and Settings from the plugin row on the **Plugins** page.
@@ -234,6 +237,13 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 - Enabled languages checklist (EU / Americas / Middle East pack)
 - Default fallback language
 
+### Ads.txt (Google AdSense)
+
+- **Enable ads.txt** — when on, the plugin serves your content at `https://yoursite.com/ads.txt`
+- **ads.txt Content** — paste the lines from **Google AdSense → Sites → Ads.txt** (or your ad network’s authorized sellers list)
+- After saving, open `/ads.txt` in the browser to confirm the file loads as plain text
+- **Conflict note:** If your host already serves a physical `ads.txt` in the web root, or another plugin/theme manages `ads.txt`, use only one method. Disable this feature here (or remove the other file/plugin handler) so advertisers see a single, consistent file
+
 ### Advanced
 
 - Caching
@@ -242,6 +252,85 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 - Defer JavaScript
 
 Save settings after changing any options.
+
+---
+
+## Google AdSense ads.txt
+
+Use this when you want Google AdSense (or similar networks) to verify authorized sellers without uploading a file via FTP.
+
+1. In **Google AdSense**, open **Sites** and select your domain
+2. Open **Ads.txt** and copy the suggested content (one or more `google.com, pub-…` lines)
+3. In WordPress, go to **SEO Campaign Hub → Settings → Ads.txt (Google AdSense)**
+4. Check **Enable ads.txt**
+5. Paste the content into **ads.txt Content**
+6. Click **Save Settings**
+7. Visit `https://yoursite.com/ads.txt` and confirm it matches what you pasted
+8. Return to AdSense and complete verification (status may take a few hours)
+
+If `/ads.txt` is empty, wrong, or a 404, confirm the feature is enabled and that no other `ads.txt` file or plugin is taking precedence. Flush permalinks once if you recently activated the plugin.
+
+---
+
+## Cloud Backup (Google Drive)
+
+Back up plugin data to Google Drive (WPvivid-style workflow). **Phase 1** is available now; **Phase 2** (full site: database + `wp-content`) is planned for a later release.
+
+### Phase 1 (current)
+
+- Connect Google Drive with OAuth (Client ID + Secret)
+- Parent folder + per-site subfolder + `plugin` folder for JSON files
+- Manual **Backup now** and optional schedule (daily / weekly)
+- Retention: keep the newest N plugin backups on Drive; older files are deleted automatically
+- Last backup status shown on the Cloud Backup page
+
+### Phase 2 (planned)
+
+- Full WordPress site backup (database dump + `wp-content` archive)
+- Chunked upload, optional separate DB vs files schedules
+- Download from Drive and restore flows
+
+### Connect Google Drive
+
+1. In [Google Cloud Console](https://console.cloud.google.com/), create or select a project
+2. Enable the **Google Drive API**
+3. Create **OAuth 2.0 Client ID** credentials (application type: **Web application**)
+4. Under **Authorized redirect URIs**, add the exact **Authorized redirect URI** shown on **SEO Campaign Hub → Cloud Backup** (copy it from that page)
+5. Copy the **Client ID** and **Client Secret** into **Cloud Backup → Cloud Storage — Google Drive**
+6. Set **Parent folder on Drive** and **Site subfolder** (defaults work for most sites; use a unique subfolder per site if one Google account backs up multiple WordPress installs)
+7. Click **Save cloud settings**
+8. Click **Authenticate with Google Drive** and approve access in Google
+9. When connected, use **Backup plugin data to Google Drive** or configure **Backup schedule**
+
+OAuth uses the `drive.file` scope (files created by this app). Tokens are stored in WordPress options; only administrators (`manage_options`) can manage backups.
+
+### Folder layout on Drive
+
+| Level | Default name | Purpose |
+|-------|----------------|--------|
+| Parent folder | `seo-campaign-hub-backups` | Top-level folder in your Google Drive |
+| Site subfolder | e.g. `yoursite_com` (from your domain) | Separates backups when one account serves multiple sites |
+| Plugin folder | `plugin` | JSON plugin backups for that site |
+
+**Example path:**
+
+```text
+seo-campaign-hub-backups / yoursite_com / plugin / seo-campaign-hub-plugin-backup-2026-07-27-143052.json
+```
+
+Each backup file contains the same **Everything** JSON payload as **Import/Export** (campaigns, offers, short links, settings).
+
+### Run and schedule backups
+
+- **Backup now** — **Cloud Backup → Backup plugin data to Google Drive** (requires an active Google connection)
+- **Schedule** — enable **Run automatic plugin backups**, choose **Daily** or **Weekly**, and click **Save schedule**
+- Schedules use **WordPress cron** (`seo_campaign_hub_cloud_backup_cron`), which runs when your site receives traffic; low-traffic sites may run late unless you use a real server cron or a cron manager plugin
+
+### Disconnect
+
+On **Cloud Backup**, when Google shows as connected, click **Disconnect** to remove stored tokens. Your Client ID, Secret, and folder names remain saved until you change them. Re-authenticate anytime to resume uploads.
+
+Design reference: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md`
 
 ---
 
@@ -331,8 +420,26 @@ Campaigns and offers are also available through the WordPress REST API under:
 ## Import / Export
 
 1. Go to **SEO Campaign Hub → Import/Export**
-2. Export campaigns/offers for backup or migration
-3. Import a previously exported file when moving between sites or restoring data
+2. Under **Export**, choose what to download, then click **Download JSON**
+3. Under **Import**, upload a previously exported `.json` file when moving between sites or restoring data
+
+### Export types
+
+| Type | Contents |
+|------|----------|
+| **Everything** | Campaigns, offers, short links, and plugin settings |
+| **Campaigns only** | Campaign CPT posts |
+| **Offers only** | Offer CPT posts |
+| **Short links only** | URL shortener records |
+| **Analytics snapshot** | Analytics rows (**export only** — cannot be imported back) |
+| **Settings only** | Allowlisted plugin options |
+
+Campaigns and offers are exported from WordPress posts; short links come from the plugin database. On import, existing items are matched by slug (campaigns/offers) or slug/key (links). Choose **Update** or **Skip** when an item already exists.
+
+### Limits and cloud backups
+
+- Import files must be **JSON** and **5 MB or smaller**
+- For hands-off backups and retention on Google Drive, use **[Cloud Backup (Google Drive)](#cloud-backup-google-drive)** (same **Everything** payload as manual export)
 
 Always keep a full WordPress backup before large imports.
 
@@ -371,6 +478,9 @@ Always keep a full WordPress backup before large imports.
 | Plugin pages look incomplete | Confirm you are logged in as an administrator |
 | Short links not redirecting | Check that URL Shortener is enabled in Settings and the link is active |
 | Analytics show no data | Confirm Analytics is enabled and that Ignore Bots is not filtering your test traffic |
+| `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
+| Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, Google is connected, and folder names are valid; check **Last backup** message on Cloud Backup |
+| Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | PHP / WordPress version notice | Upgrade to PHP 8.2+ and WordPress 6.0+ |
 
 ---
@@ -384,6 +494,13 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.3
+
+- Settings page: **Ads.txt (Google AdSense)** section (enable, paste content, serve at `/ads.txt`)
+- **Cloud Backup** admin page: Google Drive OAuth, manual backup, daily/weekly schedule, retention
+- Import/Export documentation alignment (export types, 5 MB import limit)
+- Google Drive backup design spec: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md`
 
 ### 1.1.2
 

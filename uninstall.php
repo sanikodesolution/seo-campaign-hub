@@ -99,6 +99,7 @@ function seo_campaign_hub_uninstall() {
     wp_clear_scheduled_hook( 'seo_campaign_hub_cleanup_cron' );
     wp_clear_scheduled_hook( 'seo_campaign_hub_report_cron' );
     wp_clear_scheduled_hook( 'seo_campaign_hub_email_cron' );
+    wp_clear_scheduled_hook( 'seo_campaign_hub_cloud_backup_cron' );
 }
 
 /**

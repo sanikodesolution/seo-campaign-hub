@@ -86,6 +86,7 @@ class Deactivator {
             'seo_campaign_hub_cleanup_cron',
             'seo_campaign_hub_report_cron',
             'seo_campaign_hub_email_cron',
+            'seo_campaign_hub_cloud_backup_cron',
         ];
 
         foreach ( $hooks as $hook ) {

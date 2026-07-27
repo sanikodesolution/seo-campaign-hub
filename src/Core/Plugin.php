@@ -203,6 +203,23 @@ final class Plugin {
         $this->container->singleton( 'import_export', function () {
             return new \SEO_Campaign_Hub\Services\ImportExportService();
         } );
+
+        $this->container->singleton( 'google_drive', function () {
+            return new \SEO_Campaign_Hub\Services\GoogleDriveService();
+        } );
+
+        $this->container->singleton( 'cloud_backup', function () {
+            return new \SEO_Campaign_Hub\Services\CloudBackupService(
+                $this->container->get( 'google_drive' ),
+                $this->container->get( 'import_export' )
+            );
+        } );
+
+        $this->container->singleton( 'backup_scheduler', function () {
+            return new \SEO_Campaign_Hub\Services\BackupSchedulerService(
+                $this->container->get( 'google_drive' )
+            );
+        } );
     }
 
     // =========================================================
@@ -238,6 +255,16 @@ final class Plugin {
          * @param Container $container The DI container.
          */
         do_action( 'seo_campaign_hub_services_loaded', $this->container );
+
+        try {
+            $this->container->get( 'cloud_backup' )->init();
+            $this->container->get( 'backup_scheduler' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub cloud backup failed: ' . $e->getMessage() );
+            }
+        }
     }
 
     // =========================================================
