@@ -255,6 +255,7 @@ final class Plugin {
         // Short-link redirects need parsed query vars, so template_redirect
         // (not wp_loaded, which fires before the request is parsed).
         add_action( 'template_redirect',     [ $this, 'on_wp_loaded' ],       0 );
+        add_action( 'init',                  [ $this, 'serve_ads_txt' ],      0 );
         add_action( 'rest_api_init',         [ $this, 'on_rest_api_init' ],   10 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ], 10 );
         add_action( 'wp_enqueue_scripts',    [ $this, 'enqueue_public_assets' ], 10 );
@@ -284,6 +285,44 @@ final class Plugin {
             $init = new \SEO_Campaign_Hub\Frontend\PublicInit( $this->container );
         }
         $init->init();
+    }
+
+    // =========================================================
+    // ADS.TXT
+    // =========================================================
+
+    /**
+     * Serve ads.txt content when the URL path is /ads.txt.
+     *
+     * Fires early on `init` (priority 0) so it responds before
+     * WordPress routes to a 404 or other template.
+     *
+     * @return void
+     */
+    public function serve_ads_txt(): void {
+        // Only respond to /ads.txt requests.
+        $request_uri = isset( $_SERVER['REQUEST_URI'] ) ? sanitize_text_field( wp_unslash( $_SERVER['REQUEST_URI'] ) ) : '';
+        $path = parse_url( $request_uri, PHP_URL_PATH );
+
+        if ( '/ads.txt' !== $path ) {
+            return;
+        }
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+
+        // Check if ads.txt feature is enabled.
+        if ( empty( $options['enable_ads_txt'] ) || '1' !== (string) $options['enable_ads_txt'] ) {
+            return; // Let WordPress handle normally (may 404).
+        }
+
+        $content = isset( $options['ads_txt_content'] ) ? (string) $options['ads_txt_content'] : '';
+
+        // Serve as plain text (required by ads.txt spec).
+        header( 'Content-Type: text/plain; charset=utf-8' );
+        header( 'X-Robots-Tag: noindex' );
+        header( 'Cache-Control: public, max-age=86400' ); // Cache 24h.
+        echo $content; // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- plain text file.
+        exit;
     }
 
     // =========================================================

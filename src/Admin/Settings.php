@@ -90,6 +90,10 @@ class Settings {
                 'title' => __('Localization', 'seo-campaign-hub'),
                 'description' => __('Smart language and country redirects for short links (Europe, Americas, Middle East defaults).', 'seo-campaign-hub')
             ],
+            'ads_txt' => [
+                'title' => __('Ads.txt (Google AdSense)', 'seo-campaign-hub'),
+                'description' => __('Manage your ads.txt file for Google AdSense and other ad networks. This file is served at yoursite.com/ads.txt.', 'seo-campaign-hub')
+            ],
             'advanced' => [
                 'title' => __('Advanced Settings', 'seo-campaign-hub'),
                 'description' => __('Advanced plugin settings.', 'seo-campaign-hub')
@@ -332,6 +336,22 @@ class Settings {
                     'fa' => 'Persian (fa)',
                 ],
                 'default' => 'en'
+            ],
+
+            // Ads.txt Settings
+            'enable_ads_txt' => [
+                'section' => 'ads_txt',
+                'type' => 'checkbox',
+                'title' => __('Enable ads.txt', 'seo-campaign-hub'),
+                'description' => __('Serve an ads.txt file at yoursite.com/ads.txt for Google AdSense verification.', 'seo-campaign-hub'),
+                'default' => '0'
+            ],
+            'ads_txt_content' => [
+                'section' => 'ads_txt',
+                'type' => 'textarea',
+                'title' => __('ads.txt Content', 'seo-campaign-hub'),
+                'description' => __('Paste your Google AdSense ads.txt content here. Get it from your AdSense account → Sites → Ads.txt.', 'seo-campaign-hub'),
+                'default' => ''
             ],
 
             // Advanced Settings
