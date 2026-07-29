@@ -105,8 +105,28 @@ $shortcodes = [
 					</div>
 					<div>
 						<h3><?php esc_html_e( 'Analytics', 'seo-campaign-hub' ); ?></h3>
-						<p><?php esc_html_e( 'Review page views, visitors, clicks, conversions, and daily trends for the last 7, 30, or 90 days.', 'seo-campaign-hub' ); ?></p>
+						<p><?php esc_html_e( 'Review page views, visitors, clicks, conversions, country/language breakdowns, and daily trends for the last 7, 30, or 90 days.', 'seo-campaign-hub' ); ?></p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-analytics' ) ); ?>"><?php esc_html_e( 'Open Analytics', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
+						<h3><?php esc_html_e( 'Localization', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Enable smart language/country redirects under Settings → Localization. Add per-link rules on the URL Shortener so one /go/ slug can route visitors to different WP posts by browser language or IP country.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Open Localization settings', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
+						<h3><?php esc_html_e( 'Ads.txt', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Serve Google AdSense (or other network) ads.txt from your site root. Paste the authorized sellers lines in Settings → Ads.txt, enable the feature, then verify at /ads.txt.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Open Ads.txt settings', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
+						<h3><?php esc_html_e( 'Import / Export', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Download or upload JSON backups of campaigns, offers, short links, settings, or everything. Analytics snapshots export only (cannot be imported). Max import size: 5 MB.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) ); ?>"><?php esc_html_e( 'Open Import/Export', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
+						<h3><?php esc_html_e( 'Cloud Backup', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Connect Google Drive, back up plugin data (same Everything JSON as Import/Export), schedule daily or weekly runs, and keep the newest N backups on Drive.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-cloud-backup' ) ); ?>"><?php esc_html_e( 'Open Cloud Backup', 'seo-campaign-hub' ); ?></a></p>
 					</div>
 					<div>
 						<h3><?php esc_html_e( 'Elementor', 'seo-campaign-hub' ); ?></h3>
@@ -164,6 +184,22 @@ $shortcodes = [
 						<tr>
 							<td><?php esc_html_e( 'Analytics show no data', 'seo-campaign-hub' ); ?></td>
 							<td><?php esc_html_e( 'Confirm Analytics is enabled, visit a front-end page while logged out or in a private window, then refresh Analytics. Bot filtering may ignore some test traffic.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Smart redirect goes to wrong page', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Confirm Localization is enabled, the link has language/country rules, match priority is correct, and a valid fallback Destination URL is set.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( '/ads.txt wrong, empty, or 404', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Enable Ads.txt in Settings, paste valid content, and remove any conflicting physical ads.txt or other plugin that serves the same path.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Google Drive backup fails', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Enable the Drive API, match the redirect URI exactly, connect Google, and check the Last backup message on Cloud Backup.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Scheduled cloud backup never runs', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'WordPress cron needs site traffic. Save the schedule on Cloud Backup; on quiet sites use server cron or a cron plugin to hit wp-cron.php.', 'seo-campaign-hub' ); ?></td>
 						</tr>
 						<tr>
 							<td><?php esc_html_e( 'Plugin pages look incomplete', 'seo-campaign-hub' ); ?></td>
@@ -275,6 +311,8 @@ $shortcodes = [
 				<p class="sch-help-links">
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub' ) ); ?>"><?php esc_html_e( 'Dashboard', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Settings', 'seo-campaign-hub' ); ?></a>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) ); ?>"><?php esc_html_e( 'Import/Export', 'seo-campaign-hub' ); ?></a>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-cloud-backup' ) ); ?>"><?php esc_html_e( 'Cloud Backup', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>"><?php esc_html_e( 'Permalinks', 'seo-campaign-hub' ); ?></a>
 					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=sch_campaign' ) ); ?>"><?php esc_html_e( 'New Campaign', 'seo-campaign-hub' ); ?></a>
 					<a class="button button-primary" href="<?php echo esc_url( admin_url( 'post-new.php?post_type=sch_offer' ) ); ?>"><?php esc_html_e( 'New Offer', 'seo-campaign-hub' ); ?></a>

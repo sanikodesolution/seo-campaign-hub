@@ -405,15 +405,28 @@ Most endpoints require an authenticated WordPress user with permission to manage
 | `GET` / `PUT` / `DELETE` | `/offers/{id}` | Read / update / delete an offer |
 | `POST` | `/shorten` | Create a short link |
 | `GET` | `/links` | List short links |
+| `GET` / `DELETE` | `/links/{id}` | Read / delete a short link |
 | `GET` / `POST` | `/qr-codes` | List / generate QR codes |
+| `GET` / `DELETE` | `/qr-codes/{id}` | Read / delete a QR code |
 | `GET` | `/analytics` | Analytics data |
 | `POST` | `/analytics/events` | Track an event (public) |
 | `GET` | `/analytics/summary` | Analytics summary |
+| `GET` / `POST` | `/schemas` | List / create schema records |
+| `GET` / `PUT` / `DELETE` | `/schemas/{id}` | Read / update / delete a schema |
+| `GET` / `POST` | `/redirects` | List / create redirects |
+| `GET` / `PUT` / `DELETE` | `/redirects/{id}` | Read / update / delete a redirect |
+| `GET` / `PUT` | `/settings` | Read / update plugin settings |
+| `GET` | `/export` | Export plugin data (JSON) |
+| `POST` | `/import` | Import plugin data (JSON) |
+| `GET` | `/search` | Search campaigns, offers, and links |
+| `GET` | `/stats` | Dashboard-style stats summary |
 
 Campaigns and offers are also available through the WordPress REST API under:
 
 - `/wp-json/wp/v2/sch-campaigns`
 - `/wp-json/wp/v2/sch-offers`
+
+Cloud Backup (Google Drive OAuth and uploads) is admin-only and is **not** exposed via this REST namespace.
 
 ---
 
@@ -468,6 +481,20 @@ Always keep a full WordPress backup before large imports.
 3. Categorize and tag campaigns for organization
 4. Promote with short links and track rankings / conversions
 
+### Multi-language / multi-country short link
+
+1. Publish one WordPress post or page per language (or market)
+2. Enable **Settings → Localization** and select languages
+3. Create one short link with a default Destination URL
+4. Add smart language and/or country rules; set match priority
+5. Share a single `/go/{slug}` URL; review country + language in **Analytics**
+
+### AdSense ads.txt verification
+
+1. Copy ads.txt lines from Google AdSense
+2. Paste them under **Settings → Ads.txt**, enable, and save
+3. Confirm `https://yoursite.com/ads.txt` matches; finish verification in AdSense
+
 ---
 
 ## Troubleshooting
@@ -477,6 +504,7 @@ Always keep a full WordPress backup before large imports.
 | Campaign / offer / short link URLs return 404 | Go to **Settings → Permalinks** and click **Save Changes** |
 | Plugin pages look incomplete | Confirm you are logged in as an administrator |
 | Short links not redirecting | Check that URL Shortener is enabled in Settings and the link is active |
+| Smart redirect goes to wrong page | Confirm Localization is enabled, link rules and match priority are correct, and fallback Destination URL is valid |
 | Analytics show no data | Confirm Analytics is enabled and that Ignore Bots is not filtering your test traffic |
 | `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, Google is connected, and folder names are valid; check **Last backup** message on Cloud Backup |
@@ -495,12 +523,13 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ## Changelog
 
-### 1.1.3
+### 1.1.3 (2026-07-29)
 
-- Settings page: **Ads.txt (Google AdSense)** section (enable, paste content, serve at `/ads.txt`)
-- **Cloud Backup** admin page: Google Drive OAuth, manual backup, daily/weekly schedule, retention
-- Import/Export documentation alignment (export types, 5 MB import limit)
-- Google Drive backup design spec: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md`
+- Settings → **Ads.txt (Google AdSense)** (enable, paste content, serve at `/ads.txt`)
+- **Cloud Backup**: Google Drive OAuth, manual backup, daily/weekly schedule, retention
+- Help screen coverage for Localization, Ads.txt, Cloud Backup, and Import/Export
+- Import/Export docs aligned (export types, 5 MB limit); design spec at `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md`
+- REST API docs expanded (links, QR, schemas, redirects, settings, import/export, search, stats)
 
 ### 1.1.2
 

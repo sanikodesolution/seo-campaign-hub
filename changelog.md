@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.3 - 2026-07-29
+- Settings → **Ads.txt (Google AdSense)**: enable and paste content served at `/ads.txt`
+- **Cloud Backup** admin page: Google Drive OAuth, manual backup, daily/weekly schedule, retention
+- Import/Export aligned with cloud backup (same “Everything” JSON payload; 5 MB import limit)
+- Help screen: guides and troubleshooting for Localization, Ads.txt, Cloud Backup, and Import/Export
+- Documentation: `readme.md` + Google Drive design spec
+
 ## 1.1.2 - 2026-07-22
 - Prevent plugin boot failures from taking down the whole WordPress site
 - Run DB schema upgrades only in admin/CLI (not on frontend)
