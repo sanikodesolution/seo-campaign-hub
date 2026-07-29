@@ -286,6 +286,8 @@ final class Plugin {
         add_action( 'rest_api_init',         [ $this, 'on_rest_api_init' ],   10 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_admin_assets' ], 10 );
         add_action( 'wp_enqueue_scripts',    [ $this, 'enqueue_public_assets' ], 10 );
+        add_action( 'wp_head',              [ $this, 'output_header_scripts' ], 99 );
+        add_action( 'wp_footer',            [ $this, 'output_footer_scripts' ], 99 );
 
         // Flush rewrite rules once after activation
         add_action( 'init', [ $this, 'maybe_flush_rewrite_rules' ], 99 );
@@ -826,5 +828,131 @@ final class Plugin {
             'campaignId' => $campaign_id,
             'offerId'    => $offer_id,
         ] );
+
+        // Google Analytics (GA4) injection.
+        $this->maybe_enqueue_google_analytics( $campaign_id, $offer_id );
+    }
+
+    /**
+     * Conditionally enqueue the Google Analytics GA4 script.
+     *
+     * @param int $campaign_id Current campaign ID (0 if none).
+     * @param int $offer_id    Current offer ID (0 if none).
+     * @return void
+     */
+    private function maybe_enqueue_google_analytics( int $campaign_id, int $offer_id ): void {
+        $options        = get_option( 'seo_campaign_hub_options', [] );
+        $ga_enabled     = ! empty( $options['enable_google_analytics'] );
+        $measurement_id = isset( $options['ga_measurement_id'] ) ? trim( (string) $options['ga_measurement_id'] ) : '';
+
+        if ( ! $ga_enabled || $measurement_id === '' ) {
+            return;
+        }
+
+        // Validate Measurement ID format (G-XXXXXXXXXX).
+        if ( ! preg_match( '/^G-[A-Z0-9]+$/i', $measurement_id ) ) {
+            return;
+        }
+
+        // Enqueue the gtag.js loader.
+        wp_enqueue_script(
+            'google-analytics-gtag',
+            'https://www.googletagmanager.com/gtag/js?id=' . rawurlencode( $measurement_id ),
+            [],
+            null,
+            [ 'strategy' => 'async' ]
+        );
+
+        // Build the config object.
+        $config = [];
+        $custom_json = isset( $options['ga_custom_dimensions'] ) ? trim( (string) $options['ga_custom_dimensions'] ) : '';
+        if ( $custom_json !== '' ) {
+            $decoded = json_decode( $custom_json, true );
+            if ( is_array( $decoded ) ) {
+                $config = $decoded;
+            }
+        }
+
+        $config_json = ! empty( $config ) ? wp_json_encode( $config ) : '{}';
+
+        // Build custom event calls.
+        $custom_events = '';
+        if ( ! empty( $options['ga_track_campaigns'] ) && $campaign_id > 0 ) {
+            $custom_events .= sprintf(
+                "gtag('event','sch_campaign_view',{'campaign_id':%d});\n",
+                $campaign_id
+            );
+        }
+        if ( ! empty( $options['ga_track_offer_clicks'] ) && $offer_id > 0 ) {
+            $custom_events .= sprintf(
+                "gtag('event','sch_offer_view',{'offer_id':%d});\n",
+                $offer_id
+            );
+        }
+
+        // Inline initialization script.
+        $inline = sprintf(
+            "window.dataLayer=window.dataLayer||[];\n"
+            . "function gtag(){dataLayer.push(arguments);}\n"
+            . "gtag('js',new Date());\n"
+            . "gtag('config',%s,%s);\n"
+            . "%s",
+            wp_json_encode( $measurement_id ),
+            $config_json,
+            $custom_events
+        );
+
+        wp_add_inline_script( 'google-analytics-gtag', $inline, 'after' );
+
+        // Expose GA settings so public.js can fire events client-side.
+        wp_localize_script( 'seo-campaign-hub-public', 'seoCampaignHubGA', [
+            'enabled'         => true,
+            'measurementId'   => $measurement_id,
+            'trackCampaigns'  => ! empty( $options['ga_track_campaigns'] ),
+            'trackOfferClicks' => ! empty( $options['ga_track_offer_clicks'] ),
+            'trackShortLinks' => ! empty( $options['ga_track_short_links'] ),
+        ] );
+    }
+
+    /**
+     * Output custom header scripts inside <head>.
+     *
+     * @return void
+     */
+    public function output_header_scripts(): void {
+        if ( is_admin() ) {
+            return;
+        }
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        $scripts = isset( $options['header_scripts'] ) ? trim( (string) $options['header_scripts'] ) : '';
+
+        if ( $scripts === '' ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw script/meta tags entered by admin.
+        echo "\n<!-- SEO Campaign Hub - Header Scripts -->\n" . $scripts . "\n<!-- /SEO Campaign Hub - Header Scripts -->\n";
+    }
+
+    /**
+     * Output custom footer scripts before </body>.
+     *
+     * @return void
+     */
+    public function output_footer_scripts(): void {
+        if ( is_admin() ) {
+            return;
+        }
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        $scripts = isset( $options['footer_scripts'] ) ? trim( (string) $options['footer_scripts'] ) : '';
+
+        if ( $scripts === '' ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw script/meta tags entered by admin.
+        echo "\n<!-- SEO Campaign Hub - Footer Scripts -->\n" . $scripts . "\n<!-- /SEO Campaign Hub - Footer Scripts -->\n";
     }
 }

@@ -158,6 +158,9 @@
                 }
             });
 
+            // Forward event to Google Analytics GA4 when enabled.
+            this.sendToGA(eventType, payload);
+
             $.ajax({
                 url: this.config.ajaxUrl,
                 type: 'POST',
@@ -276,6 +279,27 @@
                     }
                 });
             });
+        }
+
+        /**
+         * Forward an event to Google Analytics GA4 via gtag().
+         */
+        sendToGA(eventType, data) {
+            const ga = window.seoCampaignHubGA;
+            if (!ga || !ga.enabled || typeof window.gtag !== 'function') {
+                return;
+            }
+
+            const params = {};
+            if (data.campaign_id) params.campaign_id = data.campaign_id;
+            if (data.offer_id)    params.offer_id    = data.offer_id;
+            if (data.link_id)     params.link_id     = data.link_id;
+            if (data.post_id)     params.post_id     = data.post_id;
+            if (data.landing_page) params.page_location = data.landing_page;
+            if (data.event_name)  params.event_label  = data.event_name;
+
+            const gaEventName = 'sch_' + eventType;
+            window.gtag('event', gaEventName, params);
         }
     }
 

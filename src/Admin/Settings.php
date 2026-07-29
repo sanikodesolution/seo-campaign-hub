@@ -93,6 +93,14 @@ class Settings {
                 'title' => __('Localization', 'seo-campaign-hub'),
                 'description' => __('Smart language and country redirects for short links (Europe, Americas, Middle East defaults).', 'seo-campaign-hub')
             ],
+            'google_analytics' => [
+                'title' => __('Google Analytics', 'seo-campaign-hub'),
+                'description' => __('Connect Google Analytics (GA4) to track visitor behaviour alongside the built-in analytics.', 'seo-campaign-hub')
+            ],
+            'header_footer_scripts' => [
+                'title' => __('Header & Footer Scripts', 'seo-campaign-hub'),
+                'description' => __('Add custom code to the site-wide <head> and before </body>. Use this for Google AdSense verification, ad scripts, Meta Pixel, or any third-party snippet.', 'seo-campaign-hub')
+            ],
             'ads_txt' => [
                 'title' => __('Ads.txt (Google AdSense)', 'seo-campaign-hub'),
                 'description' => __('Manage your ads.txt file for Google AdSense and other ad networks. This file is served at yoursite.com/ads.txt.', 'seo-campaign-hub')
@@ -341,6 +349,33 @@ class Settings {
                 'default' => 'en'
             ],
 
+            // Header & Footer Scripts
+            'header_scripts' => [
+                'section' => 'header_footer_scripts',
+                'type' => 'code',
+                'title' => __('Header Scripts', 'seo-campaign-hub'),
+                'description' => __('Code added here is output inside <head></head> on every front-end page. Paste Google AdSense verification, ad auto scripts, Meta Pixel base code, etc.', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 10,
+                'placeholder' => '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXXXXXXXXXX" crossorigin="anonymous"></script>'
+            ],
+            'footer_scripts' => [
+                'section' => 'header_footer_scripts',
+                'type' => 'code',
+                'title' => __('Footer Scripts', 'seo-campaign-hub'),
+                'description' => __('Code added here is output just before </body> on every front-end page. Useful for analytics, chat widgets, or scripts that should load last.', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 10,
+                'placeholder' => '<!-- Footer scripts here -->'
+            ],
+            'header_footer_admin_only' => [
+                'section' => 'header_footer_scripts',
+                'type' => 'checkbox',
+                'title' => __('Restrict to Admins', 'seo-campaign-hub'),
+                'description' => __('Only administrators can edit these scripts (already enforced by Settings page capability). Shown here as a reminder.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+
             // Ads.txt Settings
             'enable_ads_txt' => [
                 'section' => 'ads_txt',
@@ -356,6 +391,51 @@ class Settings {
                 'description' => __('Paste your Google AdSense ads.txt content here. Get it from your AdSense account → Sites → Ads.txt.', 'seo-campaign-hub'),
                 'default' => '',
                 'rows' => 10
+            ],
+
+            // Google Analytics
+            'enable_google_analytics' => [
+                'section' => 'google_analytics',
+                'type' => 'checkbox',
+                'title' => __('Enable Google Analytics', 'seo-campaign-hub'),
+                'description' => __('Inject the Google Analytics (GA4) tracking script on the front end.', 'seo-campaign-hub'),
+                'default' => '0'
+            ],
+            'ga_measurement_id' => [
+                'section' => 'google_analytics',
+                'type' => 'text',
+                'title' => __('Measurement ID', 'seo-campaign-hub'),
+                'description' => __('Your GA4 Measurement ID (e.g. G-XXXXXXXXXX). Find it in Google Analytics → Admin → Data Streams.', 'seo-campaign-hub'),
+                'default' => ''
+            ],
+            'ga_track_campaigns' => [
+                'section' => 'google_analytics',
+                'type' => 'checkbox',
+                'title' => __('Track Campaign Views', 'seo-campaign-hub'),
+                'description' => __('Send a custom event to GA4 when a campaign page is viewed.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'ga_track_offer_clicks' => [
+                'section' => 'google_analytics',
+                'type' => 'checkbox',
+                'title' => __('Track Offer Clicks', 'seo-campaign-hub'),
+                'description' => __('Send a custom event to GA4 when an offer link is clicked.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'ga_track_short_links' => [
+                'section' => 'google_analytics',
+                'type' => 'checkbox',
+                'title' => __('Track Short Link Redirects', 'seo-campaign-hub'),
+                'description' => __('Send a custom event to GA4 when a short link redirect occurs.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'ga_custom_dimensions' => [
+                'section' => 'google_analytics',
+                'type' => 'textarea',
+                'title' => __('Custom Dimensions / Config', 'seo-campaign-hub'),
+                'description' => __('Optional JSON object merged into the gtag config call. Example: {"cookie_flags":"SameSite=None;Secure","send_page_view":false}', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 4
             ],
 
             // Advanced Settings
@@ -539,6 +619,19 @@ class Settings {
                 <?php endif;
                 break;
 
+            case 'code':
+                ?>
+                <textarea id="<?php echo esc_attr($field_id); ?>"
+                          name="<?php echo esc_attr($name); ?>"
+                          rows="<?php echo esc_attr( (string) ( $field['rows'] ?? 8 ) ); ?>"
+                          class="large-text code"
+                          placeholder="<?php echo esc_attr( $field['placeholder'] ?? '' ); ?>"
+                          style="font-family:monospace;font-size:13px;tab-size:4;"><?php echo esc_textarea($value); ?></textarea>
+                <?php if (!empty($field['description'])): ?>
+                    <p class="description"><?php echo esc_html($field['description']); ?></p>
+                <?php endif;
+                break;
+
             case 'checkbox_group':
                 $selected = is_array($value) ? $value : (array) ($field['default'] ?? []);
                 $options = isset($field['options']) && is_array($field['options']) ? $field['options'] : [];
@@ -599,6 +692,11 @@ class Settings {
 
                 case 'textarea':
                     $sanitized[$field_id] = sanitize_textarea_field($value);
+                    break;
+
+                case 'code':
+                    // Allow raw HTML/JS (script tags, meta tags, etc.) — only admins can save settings.
+                    $sanitized[$field_id] = wp_unslash($value);
                     break;
 
                 case 'select':
