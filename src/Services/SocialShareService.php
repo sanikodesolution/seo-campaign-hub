@@ -43,6 +43,22 @@ class SocialShareService {
 				'label'    => __( 'Share on WhatsApp', 'seo-campaign-hub' ),
 				'dashicon' => '',
 			],
+			'blogger'   => [
+				'label'    => __( 'Share on Blogger', 'seo-campaign-hub' ),
+				'dashicon' => '',
+			],
+			'telegram'  => [
+				'label'    => __( 'Share on Telegram', 'seo-campaign-hub' ),
+				'dashicon' => '',
+			],
+			'quora'     => [
+				'label'    => __( 'Share on Quora', 'seo-campaign-hub' ),
+				'dashicon' => '',
+			],
+			'reddit'    => [
+				'label'    => __( 'Share on Reddit', 'seo-campaign-hub' ),
+				'dashicon' => '',
+			],
 			'email'     => [
 				'label'    => __( 'Share by Email', 'seo-campaign-hub' ),
 				'dashicon' => 'dashicons-email',
@@ -99,7 +115,21 @@ class SocialShareService {
 			return false;
 		}
 		$status = get_post_status( $post );
-		return in_array( $status, [ 'publish', 'future' ], true );
+		// Published + scheduled; also allow private so editors can still open share dialogs.
+		return in_array( $status, [ 'publish', 'future', 'private' ], true );
+	}
+
+	/**
+	 * HTML for a list-table Share column cell (always visible).
+	 *
+	 * @param \WP_Post $post Post.
+	 */
+	public function get_column_html( \WP_Post $post ): string {
+		$links = $this->get_row_action_links( $post );
+		if ( $links === [] ) {
+			return '<span class="sch-share-muted">' . esc_html__( 'Publish to share', 'seo-campaign-hub' ) . '</span>';
+		}
+		return '<div class="sch-share-column">' . implode( ' ', $links ) . '</div>';
 	}
 
 	/**
@@ -126,6 +156,10 @@ class SocialShareService {
 			'linkedin'  => 'https://www.linkedin.com/sharing/share-offsite/?url=' . $encoded_url,
 			'pinterest' => 'https://www.pinterest.com/pin/create/button/?url=' . $encoded_url . '&description=' . $encoded_title . ( $encoded_image !== '' ? '&media=' . $encoded_image : '' ),
 			'whatsapp'  => 'https://api.whatsapp.com/send?text=' . rawurlencode( wp_strip_all_tags( $title ) . ' ' . $url ),
+			'blogger'   => 'https://www.blogger.com/blog-this.g?u=' . $encoded_url . '&n=' . $encoded_title,
+			'telegram'  => 'https://t.me/share/url?url=' . $encoded_url . '&text=' . $encoded_title,
+			'quora'     => 'https://www.quora.com/share?url=' . $encoded_url . '&title=' . $encoded_title,
+			'reddit'    => 'https://www.reddit.com/submit?url=' . $encoded_url . '&title=' . $encoded_title,
 			'email'     => 'mailto:?subject=' . $encoded_title . '&body=' . $encoded_url,
 			'copy'      => $url,
 		];
@@ -196,7 +230,20 @@ class SocialShareService {
 		if ( $dashicon !== '' ) {
 			return '<span class="dashicons ' . esc_attr( $dashicon ) . '" aria-hidden="true"></span>';
 		}
-		$letter = $network === 'pinterest' ? 'P' : ( $network === 'whatsapp' ? 'W' : '?' );
+		$letter = '?';
+		if ( $network === 'pinterest' ) {
+			$letter = 'P';
+		} elseif ( $network === 'whatsapp' ) {
+			$letter = 'W';
+		} elseif ( $network === 'blogger' ) {
+			$letter = 'B';
+		} elseif ( $network === 'telegram' ) {
+			$letter = 'T';
+		} elseif ( $network === 'quora' ) {
+			$letter = 'Q';
+		} elseif ( $network === 'reddit' ) {
+			$letter = 'R';
+		}
 		return '<span class="sch-share-letter sch-share-letter--' . esc_attr( $network ) . '" aria-hidden="true">' . esc_html( $letter ) . '</span>';
 	}
 }

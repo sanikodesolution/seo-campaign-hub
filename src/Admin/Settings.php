@@ -402,7 +402,7 @@ class Settings {
                 'section' => 'social_share',
                 'type' => 'checkbox',
                 'title' => __('Enable admin post share actions', 'seo-campaign-hub'),
-                'description' => __('Show social share icons under each post title on Posts → All Posts. Opens Facebook, X, LinkedIn, etc. in the browser — no App ID required.', 'seo-campaign-hub'),
+                'description' => __('Show social share icons on Posts → All Posts (Share column and row actions). Opens Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, and Copy link in the browser — no App ID required.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
             'social_share_networks' => [
@@ -416,10 +416,14 @@ class Settings {
                     'linkedin'  => 'LinkedIn',
                     'pinterest' => 'Pinterest',
                     'whatsapp'  => 'WhatsApp',
+                    'blogger'   => 'Blogger',
+                    'telegram'  => 'Telegram',
+                    'quora'     => 'Quora',
+                    'reddit'    => 'Reddit',
                     'email'     => 'Email',
                     'copy'      => 'Copy link',
                 ],
-                'default' => [ 'facebook', 'x', 'linkedin', 'pinterest', 'whatsapp', 'email', 'copy' ]
+                'default' => [ 'facebook', 'x', 'linkedin', 'pinterest', 'whatsapp', 'blogger', 'telegram', 'quora', 'reddit', 'email', 'copy' ]
             ],
 
             // Google Analytics

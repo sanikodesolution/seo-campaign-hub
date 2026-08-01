@@ -4,6 +4,8 @@
 - **Image Optimization** admin page: auto WebP on upload, bulk optimize with progress, front-end WebP serving (keeps JPEG/PNG originals)
 - Uses Imagick or GD; no external API keys
 - Design: `docs/superpowers/specs/2026-08-01-image-optimization-design.md`
+- **Social Share** expansions: Blogger, Telegram, Quora, Reddit
+- Dedicated **SEO Campaign Hub → Social Share** page + always-visible Share column on Posts → All Posts
 
 ## 1.1.4 - 2026-08-01
 - Admin **Social Share** on Posts → All Posts: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link (browser share URLs — no App ID / OAuth)

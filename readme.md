@@ -17,7 +17,7 @@ Use it to:
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
 - Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
-- Share published posts to Facebook, X, LinkedIn, Pinterest, and more from **Posts → All Posts** (browser share — no App ID)
+- Share published posts from **SEO Campaign Hub → Social Share** and **Posts → All Posts** (Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link — browser share, no App ID)
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
 
 ## Requirements
@@ -61,6 +61,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **QR Codes** | Generate and manage QR codes |
 | **Analytics** | View traffic, clicks, and conversion data |
 | **Image Optimization** | Create WebP alongside JPEG/PNG; bulk optimize; serve WebP to supporting browsers |
+| **Social Share** | Enable networks and share published posts from the Posts list (browser share — no App ID) |
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
@@ -242,9 +243,11 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 
 ### Social Share
 
-- Enable admin share icons on **Posts → All Posts** (row actions under the title)
-- Choose networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link
+- Dedicated page: **SEO Campaign Hub → Social Share**
+- Enable admin share icons on **Posts → All Posts** (Share column + row actions under the title)
+- Choose networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link
 - Uses browser share pages — no App ID or connected accounts
+- Available for published, scheduled, and private posts (drafts show “Publish to share”)
 
 ### Ads.txt (Google AdSense)
 
@@ -535,10 +538,13 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 ### 1.1.5 (2026-08-01)
 
 - Image Optimization: WebP alongside originals, auto on upload, bulk tool, front-end WebP serving
+- Social Share networks expanded: Blogger, Telegram, Quora, Reddit
+- Social Share discoverability: dedicated admin page + Share column on Posts list
 
 ### 1.1.4 (2026-08-01)
 
-- Admin Social Share on Posts list (row-action icons; browser share URLs; no App ID)
+- Admin Social Share on Posts list (browser share URLs; no App ID)
+- Networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link
 - Settings → Social Share enable + network checklist
 
 ### 1.1.3 (2026-07-29)

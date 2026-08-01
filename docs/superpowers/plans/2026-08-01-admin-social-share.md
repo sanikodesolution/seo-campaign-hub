@@ -4,14 +4,14 @@
 
 **Goal:** Add browser-based social share icon row-actions on Posts → All Posts (no OAuth/App IDs).
 
-**Architecture:** `SocialShareService` builds share URLs; `AdminInit` hooks `post_row_actions` and enqueues list-only assets; Settings adds Social Share enable + network checklist under `seo_campaign_hub_options`.
+**Architecture:** `SocialShareService` builds share URLs; `AdminInit` hooks `post_row_actions` + Share column + Social Share submenu; Settings / dedicated page add enable + network checklist under `seo_campaign_hub_options`.
 
 **Tech Stack:** WordPress PHP 8.2+, Dashicons, tiny admin JS for copy-link.
 
 ## Global Constraints
 
-- Admin only; `post` type only; row-actions under title.
-- Networks: facebook, x, linkedin, pinterest, whatsapp, email, copy.
+- Admin only; `post` type only; Share column + row-actions under title.
+- Networks: facebook, x, linkedin, pinterest, whatsapp, blogger, telegram, quora, reddit, email, copy.
 - No App ID / OAuth / auto-post.
 - Spec: `docs/superpowers/specs/2026-08-01-admin-social-share-design.md`.
 

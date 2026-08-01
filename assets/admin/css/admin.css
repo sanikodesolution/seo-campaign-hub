@@ -596,3 +596,51 @@
 .row-actions .sch-share-copy.is-copied .dashicons {
     color: #00a32a;
 }
+
+.column-sch_share {
+  width: 140px;
+}
+.sch-share-column {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 4px;
+  align-items: center;
+}
+.sch-share-column .sch-share-action {
+  display: inline-flex;
+  align-items: center;
+  text-decoration: none !important;
+}
+.sch-share-column .dashicons {
+  width: 18px;
+  height: 18px;
+  font-size: 18px;
+  color: #646970;
+}
+.sch-share-column .sch-share-action:hover .dashicons {
+  color: #2271b1;
+}
+.sch-share-muted {
+  color: #646970;
+  font-size: 12px;
+}
+
+.row-actions .sch-share-letter--blogger,
+.sch-share-column .sch-share-letter--blogger {
+  background: #ff5722;
+}
+
+.row-actions .sch-share-letter--telegram,
+.sch-share-column .sch-share-letter--telegram {
+  background: #229ed9;
+}
+
+.row-actions .sch-share-letter--quora,
+.sch-share-column .sch-share-letter--quora {
+  background: #b92b27;
+}
+
+.row-actions .sch-share-letter--reddit,
+.sch-share-column .sch-share-letter--reddit {
+  background: #ff4500;
+}

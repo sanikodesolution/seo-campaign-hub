@@ -64,8 +64,11 @@ class AdminInit {
 
         add_action( 'admin_post_sch_image_opt_settings', [ $this, 'handle_image_opt_settings' ] );
         add_action( 'wp_ajax_sch_image_optimize_batch', [ $this, 'ajax_image_optimize_batch' ] );
+        add_action( 'admin_post_sch_social_share_settings', [ $this, 'handle_social_share_settings' ] );
 
         add_filter( 'post_row_actions', [ $this, 'add_post_share_row_actions' ], 20, 2 );
+        add_filter( 'manage_post_posts_columns', [ $this, 'add_post_share_column' ] );
+        add_action( 'manage_post_posts_custom_column', [ $this, 'render_post_share_column' ], 10, 2 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_post_share_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_opt_assets' ] );
 
@@ -221,6 +224,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-image-opt',
             [ $this, 'render_image_optimization' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Social Share', 'seo-campaign-hub' ),
+            __( 'Social Share', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-social-share',
+            [ $this, 'render_social_share' ]
         );
 
         add_submenu_page(
@@ -1104,6 +1116,123 @@ class AdminInit {
         } catch ( \Throwable $e ) {
             return $actions;
         }
+    }
+
+    /**
+     * Add Share column on Posts list.
+     *
+     * @param array<string, string> $columns Columns.
+     * @return array<string, string>
+     */
+    public function add_post_share_column( array $columns ): array {
+        try {
+            $share = $this->container->get( 'social_share' );
+            if ( ! $share instanceof \SEO_Campaign_Hub\Services\SocialShareService || ! $share->is_enabled() ) {
+                return $columns;
+            }
+        } catch ( \Throwable $e ) {
+            return $columns;
+        }
+
+        $new = [];
+        foreach ( $columns as $key => $label ) {
+            $new[ $key ] = $label;
+            if ( $key === 'title' ) {
+                $new['sch_share'] = __( 'Share', 'seo-campaign-hub' );
+            }
+        }
+        if ( ! isset( $new['sch_share'] ) ) {
+            $new['sch_share'] = __( 'Share', 'seo-campaign-hub' );
+        }
+        return $new;
+    }
+
+    /**
+     * Render Share column cell.
+     *
+     * @param string $column  Column key.
+     * @param int    $post_id Post ID.
+     * @return void
+     */
+    public function render_post_share_column( string $column, int $post_id ): void {
+        if ( $column !== 'sch_share' ) {
+            return;
+        }
+        $post = get_post( $post_id );
+        if ( ! ( $post instanceof \WP_Post ) ) {
+            echo '—';
+            return;
+        }
+        try {
+            $share = $this->container->get( 'social_share' );
+            if ( ! $share instanceof \SEO_Campaign_Hub\Services\SocialShareService ) {
+                echo '—';
+                return;
+            }
+            echo $share->get_column_html( $post ); // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- escaped in service.
+        } catch ( \Throwable $e ) {
+            echo '—';
+        }
+    }
+
+    /** @return void */
+    public function render_social_share(): void {
+        $share = null;
+        try {
+            $share = $this->container->get( 'social_share' );
+        } catch ( \Throwable $e ) {
+            $share = null;
+        }
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+
+        $this->render_view( 'social-share', [
+            'page_title' => __( 'Social Share', 'seo-campaign-hub' ),
+            'share'      => $share,
+            'notice'     => $notice,
+        ] );
+    }
+
+    /**
+     * Save Social Share settings from dedicated page.
+     *
+     * @return void
+     */
+    public function handle_social_share_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_social_share_settings' );
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $options['enable_admin_social_share'] = isset( $_POST['enable_admin_social_share'] ) ? '1' : '0';
+
+        $allowed = [ 'facebook', 'x', 'linkedin', 'pinterest', 'whatsapp', 'blogger', 'telegram', 'quora', 'reddit', 'email', 'copy' ];
+        $raw     = isset( $_POST['social_share_networks'] ) ? wp_unslash( $_POST['social_share_networks'] ) : []; // phpcs:ignore WordPress.Security.ValidatedSanitizedInput.InputNotSanitized
+        $clean   = [];
+        if ( is_array( $raw ) ) {
+            foreach ( $raw as $item ) {
+                $item = sanitize_key( (string) $item );
+                if ( in_array( $item, $allowed, true ) ) {
+                    $clean[] = $item;
+                }
+            }
+        }
+        $options['social_share_networks'] = $clean !== [] ? $clean : $allowed;
+
+        update_option( 'seo_campaign_hub_options', $options );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [ 'page' => 'seo-campaign-hub-social-share', 'sch_notice' => 'saved' ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
     }
 
     /**
