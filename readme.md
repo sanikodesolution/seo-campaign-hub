@@ -25,6 +25,7 @@ Use it to:
 - WordPress 6.0+
 - PHP 8.2+
 - Administrator capability (`manage_options`) for admin screens
+- For **Image Optimization (WebP):** PHP **Imagick** with WebP support, or **GD** with `imagewebp` (no external API)
 
 ## Installation
 
@@ -207,6 +208,43 @@ Tune tracking under **Settings → Analytics Settings**:
 
 ---
 
+## How to use Image Optimization (WebP)
+
+Create **WebP** versions next to your JPEG/PNG Media Library files. Originals are kept. Supporting browsers get WebP; others still get the original.
+
+1. Go to **SEO Campaign Hub → Image Optimization**
+2. Confirm **WebP supported** (engine: Imagick or GD). If not available, enable Imagick WebP or GD `imagewebp` on the server
+3. Configure:
+   - **Auto-optimize on upload** — create WebP when new JPEG/PNG images are uploaded (default: on)
+   - **Serve WebP on front end** — swap URLs when the browser sends `Accept: image/webp` (default: on)
+   - **WebP quality** — 60–90 (default: 82)
+4. Click **Save settings**
+5. For existing Media Library images, click **Bulk Optimize** and wait for the progress bar to finish
+
+Status on the page shows JPEG/PNG totals, optimized count, pending count, and the last bulk run.
+
+Design reference: `docs/superpowers/specs/2026-08-01-image-optimization-design.md`
+
+---
+
+## How to use Social Share
+
+Share published WordPress **posts** from the admin using browser share links. No App ID, OAuth, or connected accounts.
+
+1. Go to **SEO Campaign Hub → Social Share**
+2. Enable **Show share icons on Posts → All Posts**
+3. Select networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link
+4. Save, then open **Posts → All Posts**
+5. Use the **Share** column icons (and row actions under the title) on published, scheduled, or private posts
+
+Drafts show a “Publish to share” hint. Icons open in a new tab; **Copy link** copies the permalink to the clipboard.
+
+Also configurable under **Settings → Social Share**.
+
+Design reference: `docs/superpowers/specs/2026-08-01-admin-social-share-design.md`
+
+---
+
 ## Settings guide
 
 Open **SEO Campaign Hub → Settings** and review these sections:
@@ -243,11 +281,18 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 
 ### Social Share
 
-- Dedicated page: **SEO Campaign Hub → Social Share**
+- Dedicated page: **SEO Campaign Hub → Social Share** (primary)
+- Also under **Settings → Social Share**
 - Enable admin share icons on **Posts → All Posts** (Share column + row actions under the title)
 - Choose networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link
 - Uses browser share pages — no App ID or connected accounts
 - Available for published, scheduled, and private posts (drafts show “Publish to share”)
+
+### Image Optimization
+
+- Dedicated page: **SEO Campaign Hub → Image Optimization** (settings + bulk tool live here, not under Settings)
+- Auto WebP on upload, quality, front-end WebP serving
+- Bulk optimize existing Media Library JPEG/PNG
 
 ### Ads.txt (Google AdSense)
 
@@ -507,6 +552,18 @@ Always keep a full WordPress backup before large imports.
 2. Paste them under **Settings → Ads.txt**, enable, and save
 3. Confirm `https://yoursite.com/ads.txt` matches; finish verification in AdSense
 
+### Share a blog post from admin
+
+1. Publish the post
+2. Enable networks under **SEO Campaign Hub → Social Share**
+3. On **Posts → All Posts**, use the Share column (or row actions) to open Facebook, X, LinkedIn, etc., or Copy link
+
+### Optimize Media Library images to WebP
+
+1. Confirm WebP support on **SEO Campaign Hub → Image Optimization**
+2. Enable auto-optimize and front-end serving; set quality
+3. Run **Bulk Optimize** for existing JPEG/PNG; new uploads convert automatically when auto-optimize is on
+
 ---
 
 ## Troubleshooting
@@ -521,6 +578,10 @@ Always keep a full WordPress backup before large imports.
 | `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, Google is connected, and folder names are valid; check **Last backup** message on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
+| Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
+| WebP status shows “not available” | Install/enable Imagick with WebP or GD with `imagewebp` on the server |
+| Bulk Optimize disabled or no progress | Need WebP engine support and pending JPEG/PNG attachments; leave the page open until the AJAX batches finish |
+| Front end still serves JPEG/PNG | Enable **Serve WebP on front end**; confirm WebP files exist for that attachment; test in a WebP-capable browser |
 | PHP / WordPress version notice | Upgrade to PHP 8.2+ and WordPress 6.0+ |
 
 ---
@@ -537,7 +598,8 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ### 1.1.5 (2026-08-01)
 
-- Image Optimization: WebP alongside originals, auto on upload, bulk tool, front-end WebP serving
+- Image Optimization: WebP alongside originals, auto on upload, bulk tool, front-end WebP serving (Imagick/GD; no API keys)
+- Design: `docs/superpowers/specs/2026-08-01-image-optimization-design.md`
 - Social Share networks expanded: Blogger, Telegram, Quora, Reddit
 - Social Share discoverability: dedicated admin page + Share column on Posts list
 
@@ -546,6 +608,7 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 - Admin Social Share on Posts list (browser share URLs; no App ID)
 - Networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link
 - Settings → Social Share enable + network checklist
+- Design: `docs/superpowers/specs/2026-08-01-admin-social-share-design.md`
 
 ### 1.1.3 (2026-07-29)
 
