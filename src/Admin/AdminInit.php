@@ -65,6 +65,12 @@ class AdminInit {
         add_action( 'admin_post_sch_image_opt_settings', [ $this, 'handle_image_opt_settings' ] );
         add_action( 'wp_ajax_sch_image_optimize_batch', [ $this, 'ajax_image_optimize_batch' ] );
         add_action( 'admin_post_sch_social_share_settings', [ $this, 'handle_social_share_settings' ] );
+        add_action( 'admin_post_sch_web_push_settings', [ $this, 'handle_web_push_settings' ] );
+        add_action( 'admin_post_sch_web_push_send', [ $this, 'handle_web_push_send' ] );
+        add_action( 'admin_post_sch_web_push_send_post', [ $this, 'handle_web_push_send_post' ] );
+
+        add_action( 'add_meta_boxes', [ $this, 'add_web_push_metabox' ] );
+        add_action( 'save_post_post', [ $this, 'save_web_push_metabox' ], 10, 2 );
 
         add_filter( 'post_row_actions', [ $this, 'add_post_share_row_actions' ], 20, 2 );
         add_filter( 'manage_post_posts_columns', [ $this, 'add_post_share_column' ] );
@@ -233,6 +239,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-social-share',
             [ $this, 'render_social_share' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Web Push', 'seo-campaign-hub' ),
+            __( 'Web Push', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-web-push',
+            [ $this, 'render_web_push' ]
         );
 
         add_submenu_page(
@@ -1233,6 +1248,245 @@ class AdminInit {
             )
         );
         exit;
+    }
+
+    /** @return void */
+    public function render_web_push(): void {
+        $push = null;
+        try {
+            $push = $this->container->get( 'web_push' );
+        } catch ( \Throwable $e ) {
+            $push = null;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice_msg = isset( $_GET['sch_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['sch_msg'] ) ) : '';
+
+        $this->render_view( 'web-push', [
+            'page_title' => __( 'Web Push', 'seo-campaign-hub' ),
+            'push'       => $push,
+            'notice'     => $notice,
+            'notice_msg' => $notice_msg,
+        ] );
+    }
+
+    /**
+     * Save Web Push settings.
+     *
+     * @return void
+     */
+    public function handle_web_push_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_web_push_settings' );
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $options['enable_web_push']             = isset( $_POST['enable_web_push'] ) ? '1' : '0';
+        $options['onesignal_app_id']            = isset( $_POST['onesignal_app_id'] ) ? sanitize_text_field( wp_unslash( $_POST['onesignal_app_id'] ) ) : '';
+        $options['onesignal_rest_api_key']      = isset( $_POST['onesignal_rest_api_key'] ) ? sanitize_text_field( wp_unslash( $_POST['onesignal_rest_api_key'] ) ) : '';
+        $options['web_push_auto_notify']        = isset( $_POST['web_push_auto_notify'] ) ? '1' : '0';
+        $options['web_push_soft_prompt']        = isset( $_POST['web_push_soft_prompt'] ) ? '1' : '0';
+        $options['web_push_soft_prompt_delay']  = isset( $_POST['web_push_soft_prompt_delay'] )
+            ? (string) max( 0, min( 120, (int) $_POST['web_push_soft_prompt_delay'] ) )
+            : '8';
+
+        update_option( 'seo_campaign_hub_options', $options );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [ 'page' => 'seo-campaign-hub-web-push', 'sch_notice' => 'saved' ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Manual Web Push send from admin page.
+     *
+     * @return void
+     */
+    public function handle_web_push_send(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_web_push_send' );
+
+        $title   = isset( $_POST['push_title'] ) ? sanitize_text_field( wp_unslash( $_POST['push_title'] ) ) : '';
+        $message = isset( $_POST['push_message'] ) ? sanitize_textarea_field( wp_unslash( $_POST['push_message'] ) ) : '';
+        $url     = isset( $_POST['push_url'] ) ? esc_url_raw( wp_unslash( $_POST['push_url'] ) ) : '';
+
+        try {
+            $push   = $this->container->get( 'web_push' );
+            $result = $push instanceof \SEO_Campaign_Hub\Services\OneSignalWebPushService
+                ? $push->send_notification(
+                    [
+                        'title'   => $title,
+                        'message' => $message,
+                        'url'     => $url,
+                    ]
+                )
+                : [ 'ok' => false, 'message' => __( 'Web Push service unavailable.', 'seo-campaign-hub' ) ];
+        } catch ( \Throwable $e ) {
+            $result = [ 'ok' => false, 'message' => $e->getMessage() ];
+        }
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+                    'page'       => 'seo-campaign-hub-web-push',
+                    'sch_notice' => ! empty( $result['ok'] ) ? 'sent' : 'error',
+                    'sch_msg'    => (string) ( $result['message'] ?? '' ),
+                ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Send push for a specific post from the editor.
+     *
+     * @return void
+     */
+    public function handle_web_push_send_post(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_web_push_send_post' );
+
+        $post_id = isset( $_REQUEST['post_id'] ) ? (int) $_REQUEST['post_id'] : 0;
+        if ( $post_id <= 0 || ! current_user_can( 'edit_post', $post_id ) ) {
+            wp_die( esc_html__( 'Invalid post.', 'seo-campaign-hub' ) );
+        }
+
+        try {
+            $push   = $this->container->get( 'web_push' );
+            $result = $push instanceof \SEO_Campaign_Hub\Services\OneSignalWebPushService
+                ? $push->send_for_post( $post_id )
+                : [ 'ok' => false, 'message' => __( 'Web Push service unavailable.', 'seo-campaign-hub' ) ];
+        } catch ( \Throwable $e ) {
+            $result = [ 'ok' => false, 'message' => $e->getMessage() ];
+        }
+
+        $redirect = get_edit_post_link( $post_id, 'raw' );
+        if ( ! is_string( $redirect ) || $redirect === '' ) {
+            $redirect = admin_url( 'edit.php' );
+        }
+
+        wp_safe_redirect(
+            add_query_arg(
+                [
+                    'sch_push' => ! empty( $result['ok'] ) ? 'sent' : 'error',
+                    'sch_msg'  => (string) ( $result['message'] ?? '' ),
+                ],
+                $redirect
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Register Web Push metabox on posts.
+     *
+     * @return void
+     */
+    public function add_web_push_metabox(): void {
+        add_meta_box(
+            'sch_web_push',
+            __( 'Web Push (OneSignal)', 'seo-campaign-hub' ),
+            [ $this, 'render_web_push_metabox' ],
+            'post',
+            'side',
+            'default'
+        );
+    }
+
+    /**
+     * @param \WP_Post $post Post.
+     * @return void
+     */
+    public function render_web_push_metabox( $post ): void {
+        if ( ! ( $post instanceof \WP_Post ) ) {
+            return;
+        }
+
+        wp_nonce_field( 'sch_web_push_metabox', 'sch_web_push_metabox_nonce' );
+        $skip = get_post_meta( $post->ID, \SEO_Campaign_Hub\Services\OneSignalWebPushService::META_SKIP, true ) === '1';
+        $sent = (string) get_post_meta( $post->ID, \SEO_Campaign_Hub\Services\OneSignalWebPushService::META_SENT, true );
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $flash = isset( $_GET['sch_push'] ) ? sanitize_key( wp_unslash( $_GET['sch_push'] ) ) : '';
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $flash_msg = isset( $_GET['sch_msg'] ) ? sanitize_text_field( wp_unslash( $_GET['sch_msg'] ) ) : '';
+        if ( $flash === 'sent' ) {
+            echo '<p style="color:#157347"><strong>' . esc_html( $flash_msg !== '' ? $flash_msg : __( 'Notification sent.', 'seo-campaign-hub' ) ) . '</strong></p>';
+        } elseif ( $flash === 'error' ) {
+            echo '<p style="color:#b32d2e"><strong>' . esc_html( $flash_msg !== '' ? $flash_msg : __( 'Send failed.', 'seo-campaign-hub' ) ) . '</strong></p>';
+        }
+        ?>
+        <p>
+            <label>
+                <input type="checkbox" name="sch_webpush_skip" value="1" <?php checked( $skip ); ?> />
+                <?php esc_html_e( 'Don’t notify on publish', 'seo-campaign-hub' ); ?>
+            </label>
+        </p>
+        <?php if ( $sent !== '' ) : ?>
+            <p class="description">
+                <?php
+                printf(
+                    /* translators: %s: datetime */
+                    esc_html__( 'Last push: %s', 'seo-campaign-hub' ),
+                    esc_html( $sent )
+                );
+                ?>
+            </p>
+        <?php endif; ?>
+        <?php if ( $post->post_status === 'publish' && current_user_can( 'manage_options' ) ) : ?>
+            <p>
+                <a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sch_web_push_send_post&post_id=' . (int) $post->ID ), 'sch_web_push_send_post' ) ); ?>">
+                    <?php esc_html_e( 'Send push now', 'seo-campaign-hub' ); ?>
+                </a>
+            </p>
+        <?php endif; ?>
+        <p class="description">
+            <a href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-web-push' ) ); ?>">
+                <?php esc_html_e( 'Web Push settings', 'seo-campaign-hub' ); ?>
+            </a>
+        </p>
+        <?php
+    }
+
+    /**
+     * Save Web Push metabox fields.
+     *
+     * @param int      $post_id Post ID.
+     * @param \WP_Post $post    Post.
+     * @return void
+     */
+    public function save_web_push_metabox( int $post_id, $post ): void {
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+            return;
+        }
+        if ( ! ( $post instanceof \WP_Post ) || $post->post_type !== 'post' ) {
+            return;
+        }
+        if ( ! isset( $_POST['sch_web_push_metabox_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['sch_web_push_metabox_nonce'] ) ), 'sch_web_push_metabox' ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+
+        $skip = isset( $_POST['sch_webpush_skip'] ) ? '1' : '0';
+        update_post_meta( $post_id, \SEO_Campaign_Hub\Services\OneSignalWebPushService::META_SKIP, $skip );
     }
 
     /**

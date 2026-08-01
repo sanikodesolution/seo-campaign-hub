@@ -19,6 +19,7 @@ Use it to:
 - Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
 - Share published posts from **SEO Campaign Hub → Social Share** and **Posts → All Posts** (Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link — browser share, no App ID)
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
+- **Web Push** via OneSignal (soft prompt, auto on publish, manual send)
 
 ## Requirements
 
@@ -26,6 +27,7 @@ Use it to:
 - PHP 8.2+
 - Administrator capability (`manage_options`) for admin screens
 - For **Image Optimization (WebP):** PHP **Imagick** with WebP support, or **GD** with `imagewebp` (no external API)
+- For **Web Push:** HTTPS site + free [OneSignal](https://onesignal.com) App ID and REST API Key
 
 ## Installation
 
@@ -63,6 +65,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **Analytics** | View traffic, clicks, and conversion data |
 | **Image Optimization** | Create WebP alongside JPEG/PNG; bulk optimize; serve WebP to supporting browsers |
 | **Social Share** | Enable networks and share published posts from the Posts list (browser share — no App ID) |
+| **Web Push** | OneSignal subscribe prompt, auto-notify on publish, manual send |
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
@@ -242,6 +245,24 @@ Drafts show a “Publish to share” hint. Icons open in a new tab; **Copy link*
 Also configurable under **Settings → Social Share**.
 
 Design reference: `docs/superpowers/specs/2026-08-01-admin-social-share-design.md`
+
+---
+
+## How to use Web Push (OneSignal)
+
+Send browser push notifications to visitors who subscribe on your site. Requires a free OneSignal account and HTTPS.
+
+1. In [OneSignal](https://onesignal.com), create an app → **Settings → Push & In-App → Web** → choose **Custom Code**
+2. Set **Site URL** to your exact HTTPS origin (e.g. `https://yoursite.com`)
+3. Copy **App ID** and **REST API Key** (Keys & IDs)
+4. In WordPress, go to **SEO Campaign Hub → Web Push**
+5. Enable Web Push, paste credentials, configure soft prompt + auto-notify, save
+6. Visit the front end — after the delay, visitors see “Get deal alerts”; Allow triggers the browser permission
+7. Publish a post (auto push) or use **Send push now** on the Web Push page / post editor metabox
+
+The plugin serves `https://yoursite.com/OneSignalSDKWorker.js` automatically. Per-post: check **Don’t notify on publish** to skip auto-send.
+
+Design reference: `docs/superpowers/specs/2026-08-01-onesignal-web-push-design.md`
 
 ---
 
@@ -564,6 +585,12 @@ Always keep a full WordPress backup before large imports.
 2. Enable auto-optimize and front-end serving; set quality
 3. Run **Bulk Optimize** for existing JPEG/PNG; new uploads convert automatically when auto-optimize is on
 
+### Web Push to subscribers (OneSignal)
+
+1. Configure App ID + REST API Key under **SEO Campaign Hub → Web Push**
+2. Visitors subscribe via the soft prompt
+3. Publish posts (auto) or use **Send push now** for deals
+
 ---
 
 ## Troubleshooting
@@ -579,6 +606,8 @@ Always keep a full WordPress backup before large imports.
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, Google is connected, and folder names are valid; check **Last backup** message on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
+| Soft prompt never appears | Enable Web Push + soft prompt; confirm App ID; use HTTPS; clear `sch_onesignal_prompt_dismissed` in browser localStorage; allow notifications not already granted |
+| Push send fails | Confirm REST API Key, Web platform enabled in OneSignal, and that **All Subscribers** has people who opted in |
 | WebP status shows “not available” | Install/enable Imagick with WebP or GD with `imagewebp` on the server |
 | Bulk Optimize disabled or no progress | Need WebP engine support and pending JPEG/PNG attachments; leave the page open until the AJAX batches finish |
 | Front end still serves JPEG/PNG | Enable **Serve WebP on front end**; confirm WebP files exist for that attachment; test in a WebP-capable browser |
@@ -595,6 +624,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.6 (2026-08-01)
+
+- Web Push via OneSignal: soft prompt, auto-notify on post publish, manual send
+- Serves `/OneSignalSDKWorker.js`; design: `docs/superpowers/specs/2026-08-01-onesignal-web-push-design.md`
 
 ### 1.1.5 (2026-08-01)
 

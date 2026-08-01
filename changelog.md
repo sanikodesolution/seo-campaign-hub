@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.6 - 2026-08-01
+- **Web Push (OneSignal)**: soft subscribe prompt, auto-notify on post publish, manual send from Web Push page and post editor
+- Serves `/OneSignalSDKWorker.js` from the plugin; App ID on front end; REST API Key server-only
+- Design: `docs/superpowers/specs/2026-08-01-onesignal-web-push-design.md`
+
 ## 1.1.5 - 2026-08-01
 - **Image Optimization** admin page: auto WebP on upload, bulk optimize with progress, front-end WebP serving (keeps JPEG/PNG originals)
 - Uses Imagick or GD; no external API keys
