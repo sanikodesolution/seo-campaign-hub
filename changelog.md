@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.5 - 2026-08-01
+- **Image Optimization** admin page: auto WebP on upload, bulk optimize with progress, front-end WebP serving (keeps JPEG/PNG originals)
+- Uses Imagick or GD; no external API keys
+- Design: `docs/superpowers/specs/2026-08-01-image-optimization-design.md`
+
+## 1.1.4 - 2026-08-01
+- Admin **Social Share** on Posts → All Posts: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link (browser share URLs — no App ID / OAuth)
+- Settings → Social Share: enable toggle + network checklist
+- Design/plan: `docs/superpowers/specs/2026-08-01-admin-social-share-design.md`
+
 ## 1.1.3 - 2026-07-29
 - Settings → **Ads.txt (Google AdSense)**: enable and paste content served at `/ads.txt`
 - **Cloud Backup** admin page: Google Drive OAuth, manual backup, daily/weekly schedule, retention

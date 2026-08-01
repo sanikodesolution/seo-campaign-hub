@@ -547,3 +547,52 @@
         background: #3d3d3d;
     }
 }
+/* ============================================
+   Admin Social Share (Posts list row actions)
+   ============================================ */
+
+.row-actions .sch-share-action {
+    display: inline-flex;
+    align-items: center;
+    vertical-align: middle;
+    text-decoration: none !important;
+    margin-right: 2px;
+}
+
+.row-actions .sch-share-action .dashicons {
+    width: 16px;
+    height: 16px;
+    font-size: 16px;
+    line-height: 1;
+    color: #646970;
+}
+
+.row-actions .sch-share-action:hover .dashicons,
+.row-actions .sch-share-action:focus .dashicons {
+    color: #2271b1;
+}
+
+.row-actions .sch-share-letter {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 16px;
+    height: 16px;
+    border-radius: 2px;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 1;
+    color: #fff;
+}
+
+.row-actions .sch-share-letter--pinterest {
+    background: #bd081c;
+}
+
+.row-actions .sch-share-letter--whatsapp {
+    background: #25d366;
+}
+
+.row-actions .sch-share-copy.is-copied .dashicons {
+    color: #00a32a;
+}

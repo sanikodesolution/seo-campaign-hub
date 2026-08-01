@@ -17,6 +17,8 @@ Use it to:
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
 - Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
+- Share published posts to Facebook, X, LinkedIn, Pinterest, and more from **Posts → All Posts** (browser share — no App ID)
+- Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
 
 ## Requirements
 
@@ -58,6 +60,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **URL Shortener** | Create and manage short tracking links |
 | **QR Codes** | Generate and manage QR codes |
 | **Analytics** | View traffic, clicks, and conversion data |
+| **Image Optimization** | Create WebP alongside JPEG/PNG; bulk optimize; serve WebP to supporting browsers |
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
@@ -236,6 +239,12 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 - Default match priority (language or country first)
 - Enabled languages checklist (EU / Americas / Middle East pack)
 - Default fallback language
+
+### Social Share
+
+- Enable admin share icons on **Posts → All Posts** (row actions under the title)
+- Choose networks: Facebook, X, LinkedIn, Pinterest, WhatsApp, Email, Copy link
+- Uses browser share pages — no App ID or connected accounts
 
 ### Ads.txt (Google AdSense)
 
@@ -522,6 +531,15 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.5 (2026-08-01)
+
+- Image Optimization: WebP alongside originals, auto on upload, bulk tool, front-end WebP serving
+
+### 1.1.4 (2026-08-01)
+
+- Admin Social Share on Posts list (row-action icons; browser share URLs; no App ID)
+- Settings → Social Share enable + network checklist
 
 ### 1.1.3 (2026-07-29)
 

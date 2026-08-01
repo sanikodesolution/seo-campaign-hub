@@ -62,6 +62,13 @@ class AdminInit {
         add_action( 'admin_post_sch_google_disconnect', [ $this, 'handle_google_disconnect' ] );
         add_action( 'admin_init', [ $this, 'maybe_handle_google_oauth_callback' ] );
 
+        add_action( 'admin_post_sch_image_opt_settings', [ $this, 'handle_image_opt_settings' ] );
+        add_action( 'wp_ajax_sch_image_optimize_batch', [ $this, 'ajax_image_optimize_batch' ] );
+
+        add_filter( 'post_row_actions', [ $this, 'add_post_share_row_actions' ], 20, 2 );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_post_share_assets' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_opt_assets' ] );
+
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
             [ $this, 'add_action_links' ]
@@ -205,6 +212,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-analytics',
             [ $this, 'render_analytics' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Image Optimization', 'seo-campaign-hub' ),
+            __( 'Image Optimization', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-image-opt',
+            [ $this, 'render_image_optimization' ]
         );
 
         add_submenu_page(
@@ -364,6 +380,155 @@ class AdminInit {
         }
         unset( $row );
         return $rows;
+    }
+
+    /** @return void */
+    public function render_image_optimization(): void {
+        $optimizer = null;
+        try {
+            $optimizer = $this->container->get( 'image_optimization' );
+        } catch ( \Throwable $e ) {
+            $optimizer = null;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+
+        $this->render_view( 'image-optimization', [
+            'page_title' => __( 'Image Optimization', 'seo-campaign-hub' ),
+            'optimizer'  => $optimizer,
+            'notice'     => $notice,
+        ] );
+    }
+
+    /**
+     * Save Image Optimization settings from dedicated page.
+     *
+     * @return void
+     */
+    public function handle_image_opt_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_image_opt_settings' );
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $options['image_opt_auto_upload'] = isset( $_POST['image_opt_auto_upload'] ) ? '1' : '0';
+        $options['image_opt_serve_webp']  = isset( $_POST['image_opt_serve_webp'] ) ? '1' : '0';
+        $quality = isset( $_POST['image_opt_quality'] ) ? absint( wp_unslash( $_POST['image_opt_quality'] ) ) : 82;
+        $options['image_opt_quality'] = max( 60, min( 90, $quality ) );
+
+        update_option( 'seo_campaign_hub_options', $options );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [ 'page' => 'seo-campaign-hub-image-opt', 'sch_notice' => 'saved' ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * AJAX: optimize a small batch of pending attachments.
+     *
+     * @return void
+     */
+    public function ajax_image_optimize_batch(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => __( 'Forbidden.', 'seo-campaign-hub' ) ], 403 );
+        }
+        check_ajax_referer( 'sch_image_optimize_batch', 'nonce' );
+
+        try {
+            /** @var \SEO_Campaign_Hub\Services\ImageOptimizationService $optimizer */
+            $optimizer = $this->container->get( 'image_optimization' );
+        } catch ( \Throwable $e ) {
+            wp_send_json_error( [ 'message' => __( 'Service unavailable.', 'seo-campaign-hub' ) ], 500 );
+        }
+
+        if ( ! $optimizer->supports_webp() ) {
+            wp_send_json_error( [ 'message' => __( 'WebP not supported on this server.', 'seo-campaign-hub' ) ] );
+        }
+
+        $ids       = $optimizer->get_pending_ids( 3 );
+        $processed = 0;
+        $success   = 0;
+        $failed    = 0;
+
+        foreach ( $ids as $id ) {
+            ++$processed;
+            $result = $optimizer->optimize_attachment( (int) $id );
+            if ( ! empty( $result['success'] ) ) {
+                ++$success;
+            } else {
+                ++$failed;
+                update_post_meta( (int) $id, '_sch_webp_skip', '1' );
+            }
+        }
+
+        $remaining = count( $optimizer->get_pending_ids( 500 ) );
+        if ( $processed > 0 ) {
+            $optimizer->save_last_run(
+                [
+                    'processed' => $processed,
+                    'success'   => $success,
+                    'failed'    => $failed,
+                ]
+            );
+        }
+
+        wp_send_json_success(
+            [
+                'processed' => $processed,
+                'success'   => $success,
+                'failed'    => $failed,
+                'remaining' => (int) $remaining,
+            ]
+        );
+    }
+
+    /**
+     * Assets for Image Optimization admin page.
+     *
+     * @param string $hook_suffix Hook.
+     * @return void
+     */
+    public function enqueue_image_opt_assets( string $hook_suffix ): void {
+        if ( strpos( $hook_suffix, 'seo-campaign-hub-image-opt' ) === false ) {
+            return;
+        }
+
+        $pending = 0;
+        try {
+            $pending = $this->container->get( 'image_optimization' )->get_stats()['pending'];
+        } catch ( \Throwable $e ) {
+            $pending = 0;
+        }
+
+        $version = defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '1.0.0';
+        $url     = defined( 'SEO_CAMPAIGN_HUB_PLUGIN_URL' ) ? SEO_CAMPAIGN_HUB_PLUGIN_URL : '';
+
+        wp_enqueue_script(
+            'seo-campaign-hub-image-opt',
+            $url . 'assets/admin/js/admin-image-opt.js',
+            [],
+            $version,
+            true
+        );
+        wp_localize_script(
+            'seo-campaign-hub-image-opt',
+            'schImageOpt',
+            [
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'sch_image_optimize_batch' ),
+                'pending' => (string) (int) $pending,
+            ]
+        );
     }
 
     /** @return void */
@@ -912,6 +1077,86 @@ class AdminInit {
         );
         wp_safe_redirect( $url );
         exit;
+    }
+
+    // =========================================================
+    // SOCIAL SHARE (POSTS LIST)
+    // =========================================================
+
+    /**
+     * Append browser share icons to Posts list row actions.
+     *
+     * @param array<string, string> $actions Existing actions.
+     * @param \WP_Post              $post    Post.
+     * @return array<string, string>
+     */
+    public function add_post_share_row_actions( array $actions, $post ): array {
+        if ( ! ( $post instanceof \WP_Post ) ) {
+            return $actions;
+        }
+
+        try {
+            $share = $this->container->get( 'social_share' );
+            if ( ! $share instanceof \SEO_Campaign_Hub\Services\SocialShareService ) {
+                return $actions;
+            }
+            return array_merge( $actions, $share->get_row_action_links( $post ) );
+        } catch ( \Throwable $e ) {
+            return $actions;
+        }
+    }
+
+    /**
+     * Enqueue share icons CSS/JS on Posts → All Posts only.
+     *
+     * @param string $hook_suffix Admin hook.
+     * @return void
+     */
+    public function enqueue_post_share_assets( string $hook_suffix ): void {
+        if ( $hook_suffix !== 'edit.php' ) {
+            return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $post_type = isset( $_GET['post_type'] ) ? sanitize_key( wp_unslash( $_GET['post_type'] ) ) : 'post';
+        if ( $post_type !== 'post' ) {
+            return;
+        }
+
+        try {
+            $share = $this->container->get( 'social_share' );
+            if ( ! $share instanceof \SEO_Campaign_Hub\Services\SocialShareService || ! $share->is_enabled() ) {
+                return;
+            }
+        } catch ( \Throwable $e ) {
+            return;
+        }
+
+        $version = defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '1.0.0';
+        $url     = defined( 'SEO_CAMPAIGN_HUB_PLUGIN_URL' ) ? SEO_CAMPAIGN_HUB_PLUGIN_URL : '';
+
+        wp_enqueue_style( 'dashicons' );
+        wp_enqueue_style(
+            'seo-campaign-hub-admin-share',
+            $url . 'assets/admin/css/admin.css',
+            [ 'dashicons' ],
+            $version
+        );
+        wp_enqueue_script(
+            'seo-campaign-hub-admin-share',
+            $url . 'assets/admin/js/admin-share.js',
+            [],
+            $version,
+            true
+        );
+        wp_localize_script(
+            'seo-campaign-hub-admin-share',
+            'schShare',
+            [
+                'copied' => __( 'Copied!', 'seo-campaign-hub' ),
+                'failed' => __( 'Copy failed', 'seo-campaign-hub' ),
+            ]
+        );
     }
 
     // =========================================================

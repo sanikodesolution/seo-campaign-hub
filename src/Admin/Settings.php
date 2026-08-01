@@ -105,6 +105,10 @@ class Settings {
                 'title' => __('Ads.txt (Google AdSense)', 'seo-campaign-hub'),
                 'description' => __('Manage your ads.txt file for Google AdSense and other ad networks. This file is served at yoursite.com/ads.txt.', 'seo-campaign-hub')
             ],
+            'social_share' => [
+                'title' => __('Social Share', 'seo-campaign-hub'),
+                'description' => __('Browser-based share icons on Posts → All Posts (no App ID or connected accounts).', 'seo-campaign-hub')
+            ],
             'advanced' => [
                 'title' => __('Advanced Settings', 'seo-campaign-hub'),
                 'description' => __('Advanced plugin settings.', 'seo-campaign-hub')
@@ -391,6 +395,31 @@ class Settings {
                 'description' => __('Paste your Google AdSense ads.txt content here. Get it from your AdSense account → Sites → Ads.txt.', 'seo-campaign-hub'),
                 'default' => '',
                 'rows' => 10
+            ],
+
+            // Social Share (admin Posts list)
+            'enable_admin_social_share' => [
+                'section' => 'social_share',
+                'type' => 'checkbox',
+                'title' => __('Enable admin post share actions', 'seo-campaign-hub'),
+                'description' => __('Show social share icons under each post title on Posts → All Posts. Opens Facebook, X, LinkedIn, etc. in the browser — no App ID required.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'social_share_networks' => [
+                'section' => 'social_share',
+                'type' => 'checkbox_group',
+                'title' => __('Networks', 'seo-campaign-hub'),
+                'description' => __('Choose which share actions appear in the Posts list row actions.', 'seo-campaign-hub'),
+                'options' => [
+                    'facebook'  => 'Facebook',
+                    'x'         => 'X (Twitter)',
+                    'linkedin'  => 'LinkedIn',
+                    'pinterest' => 'Pinterest',
+                    'whatsapp'  => 'WhatsApp',
+                    'email'     => 'Email',
+                    'copy'      => 'Copy link',
+                ],
+                'default' => [ 'facebook', 'x', 'linkedin', 'pinterest', 'whatsapp', 'email', 'copy' ]
             ],
 
             // Google Analytics
