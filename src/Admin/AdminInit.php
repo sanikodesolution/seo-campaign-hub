@@ -63,6 +63,7 @@ class AdminInit {
         add_action( 'admin_init', [ $this, 'maybe_handle_google_oauth_callback' ] );
 
         add_action( 'admin_post_sch_image_opt_settings', [ $this, 'handle_image_opt_settings' ] );
+        add_action( 'admin_post_sch_image_to_svg_settings', [ $this, 'handle_image_to_svg_settings' ] );
         add_action( 'wp_ajax_sch_image_optimize_batch', [ $this, 'ajax_image_optimize_batch' ] );
         add_action( 'admin_post_sch_social_share_settings', [ $this, 'handle_social_share_settings' ] );
         add_action( 'admin_post_sch_web_push_settings', [ $this, 'handle_web_push_settings' ] );
@@ -77,6 +78,7 @@ class AdminInit {
         add_action( 'manage_post_posts_custom_column', [ $this, 'render_post_share_column' ], 10, 2 );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_post_share_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_opt_assets' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_to_svg_assets' ] );
 
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
@@ -230,6 +232,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-image-opt',
             [ $this, 'render_image_optimization' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Image to SVG', 'seo-campaign-hub' ),
+            __( 'Image to SVG', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-image-to-svg',
+            [ $this, 'render_image_to_svg' ]
         );
 
         add_submenu_page(
@@ -428,6 +439,53 @@ class AdminInit {
         ] );
     }
 
+    /** @return void */
+    public function render_image_to_svg(): void {
+        $service = null;
+        try {
+            $service = $this->container->get( 'image_to_svg' );
+        } catch ( \Throwable $e ) {
+            $service = null;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+
+        $this->render_view( 'image-to-svg', [
+            'page_title' => __( 'Image to SVG', 'seo-campaign-hub' ),
+            'service'    => $service,
+            'notice'     => $notice,
+        ] );
+    }
+
+    /**
+     * Save Image → SVG settings from dedicated admin page.
+     *
+     * @return void
+     */
+    public function handle_image_to_svg_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_image_to_svg_settings' );
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $options['enable_image_to_svg'] = isset( $_POST['enable_image_to_svg'] ) ? '1' : '0';
+        update_option( 'seo_campaign_hub_options', $options );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [ 'page' => 'seo-campaign-hub-image-to-svg', 'sch_notice' => 'saved' ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
     /**
      * Save Image Optimization settings from dedicated page.
      *
@@ -556,6 +614,23 @@ class AdminInit {
                 'pending' => (string) (int) $pending,
             ]
         );
+    }
+
+    /**
+     * Assets for Image → SVG admin page (reuse public converter).
+     *
+     * @param string $hook_suffix Hook.
+     * @return void
+     */
+    public function enqueue_image_to_svg_assets( string $hook_suffix ): void {
+        if ( strpos( $hook_suffix, 'seo-campaign-hub-image-to-svg' ) === false ) {
+            return;
+        }
+
+        try {
+            $this->container->get( 'image_to_svg' )->enqueue_assets();
+        } catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+        }
     }
 
     /** @return void */

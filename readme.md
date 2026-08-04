@@ -19,6 +19,7 @@ Use it to:
 - Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
 - Share published posts from **SEO Campaign Hub → Social Share** and **Posts → All Posts** (Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link — browser share, no App ID)
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
+- Convert **PNG/JPG → SVG** on a public tool page (no login; browser-only)
 - **Web Push** via OneSignal (soft prompt, auto on publish, manual send)
 
 ## Requirements
@@ -27,6 +28,7 @@ Use it to:
 - PHP 8.2+
 - Administrator capability (`manage_options`) for admin screens
 - For **Image Optimization (WebP):** PHP **Imagick** with WebP support, or **GD** with `imagewebp` (no external API)
+- For **Image → SVG tool:** modern browser with FileReader/Canvas (no server conversion)
 - For **Web Push:** HTTPS site + free [OneSignal](https://onesignal.com) App ID and REST API Key
 
 ## Installation
@@ -34,7 +36,7 @@ Use it to:
 1. Upload the plugin folder to `/wp-content/plugins/seo-campaign-hub`
 2. In WordPress admin, go to **Plugins → Installed Plugins**
 3. Click **Activate** on **SEO Campaign Hub**
-4. After activation, go to **Settings → Permalinks** and click **Save Changes** once (this flushes rewrite rules for campaigns, offers, and `/go/` short links)
+4. After activation, go to **Settings → Permalinks** and click **Save Changes** once (this flushes rewrite rules for campaigns, offers, `/go/` short links, and `/tools/image-to-svg/`)
 5. Open **SEO Campaign Hub** in the left admin menu
 
 ## Quick start (recommended workflow)
@@ -64,9 +66,10 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **QR Codes** | Generate and manage QR codes |
 | **Analytics** | View traffic, clicks, and conversion data |
 | **Image Optimization** | Create WebP alongside JPEG/PNG; bulk optimize; serve WebP to supporting browsers |
+| **Image to SVG** | Convert PNG/JPG to SVG (admin tool + public page, no login) |
 | **Social Share** | Enable networks and share published posts from the Posts list (browser share — no App ID) |
 | **Web Push** | OneSignal subscribe prompt, auto-notify on publish, manual send |
-| **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, localization, and performance options |
+| **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, public tools, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
 | **Help** | In-plugin help and support notes |
@@ -227,6 +230,35 @@ Create **WebP** versions next to your JPEG/PNG Media Library files. Originals ar
 Status on the page shows JPEG/PNG totals, optimized count, pending count, and the last bulk run.
 
 Design reference: `docs/superpowers/specs/2026-08-01-image-optimization-design.md`
+
+---
+
+## How to use Image → SVG (public, no login)
+
+Convert **PNG / JPG / WebP** to **SVG** in the visitor’s browser. Files are not uploaded to WordPress.
+
+1. Go to **SEO Campaign Hub → Image to SVG** (also enable under **Settings → Public Tools**)
+2. Flush permalinks once: **Settings → Permalinks → Save Changes**
+3. Open the public URL (or click **Open public tool**):
+
+```text
+https://yoursite.com/tools/image-to-svg/
+```
+
+4. Choose a mode:
+   - **Wrap in SVG** (default) — embeds the image inside an SVG (best for photos/product shots)
+   - **Vectorize** — posterizes into SVG shapes (best for simple logos/icons; not photos)
+5. Download the `.svg`
+
+Optional shortcode (same UI on any page/post):
+
+```text
+[sch_image_to_svg]
+```
+
+Limits: ~5 MB client-side; modern browser required.
+
+Design reference: `docs/superpowers/specs/2026-08-04-image-to-svg-tool-design.md`
 
 ---
 
@@ -611,6 +643,7 @@ Always keep a full WordPress backup before large imports.
 | WebP status shows “not available” | Install/enable Imagick with WebP or GD with `imagewebp` on the server |
 | Bulk Optimize disabled or no progress | Need WebP engine support and pending JPEG/PNG attachments; leave the page open until the AJAX batches finish |
 | Front end still serves JPEG/PNG | Enable **Serve WebP on front end**; confirm WebP files exist for that attachment; test in a WebP-capable browser |
+| `/tools/image-to-svg/` returns 404 | Enable **Settings → Public Tools → Image → SVG**; then **Settings → Permalinks → Save Changes** |
 | PHP / WordPress version notice | Upgrade to PHP 8.2+ and WordPress 6.0+ |
 
 ---
@@ -624,6 +657,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.7 (2026-08-04)
+
+- Public **Image → SVG** tool at `/tools/image-to-svg/` (no login; browser-only Wrap + Vectorize)
+- Shortcode `[sch_image_to_svg]` and Settings → Public Tools toggle
 
 ### 1.1.6 (2026-08-01)
 

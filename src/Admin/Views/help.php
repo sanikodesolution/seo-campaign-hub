@@ -27,6 +27,7 @@ $shortcodes = [
 	'[sch_offers campaign_id="123" limit="10" orderby="date" order="DESC"]',
 	'[sch_short_link url="' . home_url( '/' . $prefix . '/deal' ) . '" target="_blank"]Shop the deal[/sch_short_link]',
 	'[sch_qr_code id="10" size="200"]',
+	'[sch_image_to_svg]',
 ];
 ?>
 <div class="wrap">

@@ -105,6 +105,10 @@ class Settings {
                 'title' => __('Ads.txt (Google AdSense)', 'seo-campaign-hub'),
                 'description' => __('Manage your ads.txt file for Google AdSense and other ad networks. This file is served at yoursite.com/ads.txt.', 'seo-campaign-hub')
             ],
+            'tools' => [
+                'title' => __('Public Tools', 'seo-campaign-hub'),
+                'description' => __('Front-end utilities that visitors can use without logging into WordPress.', 'seo-campaign-hub')
+            ],
             'social_share' => [
                 'title' => __('Social Share', 'seo-campaign-hub'),
                 'description' => __('Browser-based share icons on Posts → All Posts (no App ID or connected accounts).', 'seo-campaign-hub')
@@ -395,6 +399,15 @@ class Settings {
                 'description' => __('Paste your Google AdSense ads.txt content here. Get it from your AdSense account → Sites → Ads.txt.', 'seo-campaign-hub'),
                 'default' => '',
                 'rows' => 10
+            ],
+
+            // Public tools
+            'enable_image_to_svg' => [
+                'section' => 'tools',
+                'type' => 'checkbox',
+                'title' => __('Enable Image → SVG tool', 'seo-campaign-hub'),
+                'description' => __('Public page at /tools/image-to-svg/ (no login). Visitors convert PNG/JPG to SVG in the browser. Also available via shortcode [sch_image_to_svg]. After enabling, save Settings → Permalinks once if the page 404s.', 'seo-campaign-hub'),
+                'default' => '1'
             ],
 
             // Social Share (admin Posts list)

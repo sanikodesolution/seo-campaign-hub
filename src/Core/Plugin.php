@@ -232,6 +232,10 @@ final class Plugin {
         $this->container->singleton( 'web_push', function () {
             return new \SEO_Campaign_Hub\Services\OneSignalWebPushService();
         } );
+
+        $this->container->singleton( 'image_to_svg', function () {
+            return new \SEO_Campaign_Hub\Services\ImageToSvgService();
+        } );
     }
 
     // =========================================================
@@ -293,6 +297,15 @@ final class Plugin {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log( 'SEO Campaign Hub web push failed: ' . $e->getMessage() );
+            }
+        }
+
+        try {
+            $this->container->get( 'image_to_svg' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub image-to-svg failed: ' . $e->getMessage() );
             }
         }
     }
