@@ -42,6 +42,13 @@ final class Plugin {
      */
     private bool $initialized = false;
 
+    /**
+     * AdSense/header scripts deferred for delayed injection.
+     *
+     * @var string
+     */
+    private string $deferred_header_scripts = '';
+
     // =========================================================
     // SINGLETON
     // =========================================================
@@ -987,6 +994,16 @@ final class Plugin {
             return;
         }
 
+        $delay = \SEO_Campaign_Hub\Services\DelayedAds::is_enabled()
+            && \SEO_Campaign_Hub\Services\DelayedAds::looks_like_ads( $scripts );
+
+        if ( $delay ) {
+            \SEO_Campaign_Hub\Services\DelayedAds::enqueue_script();
+            // Stash for footer template injection (avoids blocking first paint).
+            $this->deferred_header_scripts = $scripts;
+            return;
+        }
+
         // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- Raw script/meta tags entered by admin.
         echo "\n<!-- SEO Campaign Hub - Header Scripts -->\n" . $scripts . "\n<!-- /SEO Campaign Hub - Header Scripts -->\n";
     }
@@ -999,6 +1016,13 @@ final class Plugin {
     public function output_footer_scripts(): void {
         if ( is_admin() ) {
             return;
+        }
+
+        if ( ! empty( $this->deferred_header_scripts ) ) {
+            echo "\n<template id=\"sch-delayed-header-scripts\">\n";
+            // phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin-entered ad scripts, deferred.
+            echo $this->deferred_header_scripts;
+            echo "\n</template>\n";
         }
 
         $options = get_option( 'seo_campaign_hub_options', [] );

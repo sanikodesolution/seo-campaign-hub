@@ -383,6 +383,22 @@ class Settings {
                 'description' => __('Only administrators can edit these scripts (already enforced by Settings page capability). Shown here as a reminder.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
+            'enable_delay_adsense' => [
+                'section' => 'header_footer_scripts',
+                'type' => 'checkbox',
+                'title' => __('Delay AdSense load', 'seo-campaign-hub'),
+                'description' => __('Loads AdSense/ad network scripts after a short delay so page content appears faster. Put AdSense loader in Header Scripts; keep analytics (GA, Pixel) in Footer Scripts when this is on. Also lazy-loads public tools Above/Below ad slots near the viewport.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'adsense_load_delay' => [
+                'section' => 'header_footer_scripts',
+                'type' => 'number',
+                'title' => __('AdSense delay (seconds)', 'seo-campaign-hub'),
+                'description' => __('Wait this many seconds after page load before injecting AdSense (1–10). Default: 2.', 'seo-campaign-hub'),
+                'default' => '2',
+                'min' => 1,
+                'max' => 10
+            ],
 
             // Ads.txt Settings
             'enable_ads_txt' => [

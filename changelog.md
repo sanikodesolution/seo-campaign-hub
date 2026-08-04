@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.11 - 2026-08-04
+- **Delay AdSense load**: Header AdSense scripts inject after a configurable delay (default 2s)
+- Public tools Above/Below ad slots lazy-load near the viewport when delay is enabled
+- Settings → Header & Footer Scripts: enable toggle + delay seconds
+
 ## 1.1.9 - 2026-08-04
 - Shared **Above/Below ad slots** on `/tools/image-to-svg/` and `/tools/url-shortener/`
 - Settings → Public Tools: paste AdSense, affiliate, or company ad HTML

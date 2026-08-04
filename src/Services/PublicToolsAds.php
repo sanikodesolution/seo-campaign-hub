@@ -42,13 +42,25 @@ class PublicToolsAds {
 	 * @param string $position above|below.
 	 */
 	public static function render( string $position ): void {
-		$key = $position === 'below' ? self::BELOW_KEY : self::ABOVE_KEY;
+		$key  = $position === 'below' ? self::BELOW_KEY : self::ABOVE_KEY;
 		$html = self::get_slot_html( $key );
 		if ( $html === '' ) {
 			return;
 		}
 
 		$class = $position === 'below' ? 'sch-tools-ad sch-tools-ad--below' : 'sch-tools-ad sch-tools-ad--above';
+
+		if ( DelayedAds::is_enabled() ) {
+			DelayedAds::enqueue_script();
+			echo '<aside class="' . esc_attr( $class ) . '" data-sch-lazy-ad aria-label="' . esc_attr__( 'Advertisement', 'seo-campaign-hub' ) . '">';
+			echo '<template data-sch-ad-template>';
+			// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin-only settings code.
+			echo $html;
+			echo '</template>';
+			echo '</aside>';
+			return;
+		}
+
 		echo '<aside class="' . esc_attr( $class ) . '" aria-label="' . esc_attr__( 'Advertisement', 'seo-campaign-hub' ) . '">';
 		// phpcs:ignore WordPress.Security.EscapeOutput.OutputNotEscaped -- admin-only settings code (AdSense / affiliate HTML).
 		echo $html;

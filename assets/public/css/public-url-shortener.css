@@ -162,6 +162,7 @@
 	margin: 1rem 0;
 	text-align: center;
 	overflow: auto;
+	min-height: 90px; /* reserve space to reduce layout jump when ads hydrate */
 }
 
 .sch-tools-ad--above {

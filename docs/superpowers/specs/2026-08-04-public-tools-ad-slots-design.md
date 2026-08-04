@@ -2,7 +2,7 @@
 
 **Date:** 2026-08-04  
 **Plugin:** SEO Campaign Hub  
-**Status:** Approved — implementing
+**Status:** Approved — shipped
 
 ## Goal
 
@@ -20,8 +20,10 @@ Keep monetization slots on both public tool pages so the site owner can paste Ad
 |-----|------|---------|
 | `tools_ad_above` | code (raw HTML/JS) | Markup above the tool |
 | `tools_ad_below` | code (raw HTML/JS) | Markup below the tool |
+| `enable_delay_adsense` | checkbox (default on) | Delay AdSense loader + lazy tool slots |
+| `adsense_load_delay` | number 1–10 (default 2) | Seconds before injecting AdSense |
 
-Empty slots render nothing. AdSense loader can still live in Settings → Header Scripts.
+Empty slots render nothing. AdSense loader lives in Settings → Header Scripts (deferred when delay is on).
 
 ## Out of scope
 

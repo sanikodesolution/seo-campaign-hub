@@ -306,6 +306,15 @@ Both standalone tool pages (`/tools/image-to-svg/` and `/tools/url-shortener/`) 
 4. Leave a field empty to hide that slot
 5. Open either public tool URL to verify
 
+### Faster loading (recommended)
+
+Under **Settings → Header & Footer Scripts**:
+
+- Enable **Delay AdSense load** (default on)
+- Set **AdSense delay (seconds)** (default: 2)
+
+AdSense then loads after the delay (and tool ad slots hydrate near the viewport), so content paints first. Keep GA/Pixel in **Footer Scripts** when delay is on.
+
 Use affiliate banners, company promo HTML, or any network markup the same way.
 
 Design reference: `docs/superpowers/specs/2026-08-04-public-tools-ad-slots-design.md`
@@ -721,6 +730,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.11 (2026-08-04)
+
+- **Delay AdSense load** (Settings → Header & Footer Scripts): inject ads after N seconds; lazy tool ad slots
+- Keeps first paint faster while still showing ads
 
 ### 1.1.9 (2026-08-04)
 
