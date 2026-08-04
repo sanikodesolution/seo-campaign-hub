@@ -423,7 +423,7 @@ class Settings {
                 'description' => __('When enabled, guest short links may only point to URLs on this website’s host.', 'seo-campaign-hub'),
                 'default' => '0'
             ],
-            'public_shortener_rate_limit' => [
+			'public_shortener_rate_limit' => [
                 'section' => 'tools',
                 'type' => 'number',
                 'title' => __('Public shortener rate limit', 'seo-campaign-hub'),
@@ -431,6 +431,24 @@ class Settings {
                 'default' => '10',
                 'min' => 1,
                 'max' => 100
+            ],
+            'tools_ad_above' => [
+                'section' => 'tools',
+                'type' => 'code',
+                'title' => __('Public tools ad — above', 'seo-campaign-hub'),
+                'description' => __('Shared HTML shown above the tool on /tools/image-to-svg/ and /tools/url-shortener/ only (not shortcodes). Paste AdSense units, affiliate banners, or company ad markup. Put the AdSense loader in Header Scripts if needed.', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 8,
+                'placeholder' => '<!-- AdSense / affiliate / company ad above the tool -->'
+            ],
+            'tools_ad_below' => [
+                'section' => 'tools',
+                'type' => 'code',
+                'title' => __('Public tools ad — below', 'seo-campaign-hub'),
+                'description' => __('Shared HTML shown below the tool on both standalone public tool pages (not shortcodes).', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 8,
+                'placeholder' => '<!-- AdSense / affiliate / company ad below the tool -->'
             ],
 
             // Social Share (admin Posts list)

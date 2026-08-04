@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.9 - 2026-08-04
+- Shared **Above/Below ad slots** on `/tools/image-to-svg/` and `/tools/url-shortener/`
+- Settings → Public Tools: paste AdSense, affiliate, or company ad HTML
+- Shortcode embeds stay ad-free
+- Design: `docs/superpowers/specs/2026-08-04-public-tools-ad-slots-design.md`
+
 ## 1.1.8 - 2026-08-04
 - **Public URL Shortener**: `/tools/url-shortener/` (no login), shortcode `[sch_url_shortener]`
 - Destination URL only (auto slug); rate limit + honeypot; optional same-site destinations

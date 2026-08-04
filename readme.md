@@ -21,6 +21,7 @@ Use it to:
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
 - Convert **PNG/JPG → SVG** on a public tool page (no login; browser-only)
 - Create **short URLs** on a public tool page (no login; rate-limited)
+- Monetize public tools with shared **Above/Below ad slots** (AdSense, affiliate, or company HTML)
 - **Web Push** via OneSignal (soft prompt, auto on publish, manual send)
 
 ## Requirements
@@ -290,6 +291,24 @@ Optional shortcode (same UI on any page/post):
 Abuse protection: honeypot field + per-IP hourly rate limit. No captcha in v1.
 
 Design reference: `docs/superpowers/specs/2026-08-04-public-url-shortener-design.md`
+
+---
+
+## How to monetize public tools (ads)
+
+Both standalone tool pages (`/tools/image-to-svg/` and `/tools/url-shortener/`) share two ad slots: **above** and **below** the tool. Shortcode embeds stay ad-free.
+
+1. Go to **SEO Campaign Hub → Settings → Public Tools**
+2. Paste ad HTML into:
+   - **Public tools ad — above**
+   - **Public tools ad — below**
+3. For Google AdSense, put the `adsbygoogle.js` loader in **Settings → Header & Footer Scripts → Header Scripts**, then paste each unit’s `<ins class="adsbygoogle">…</ins>` (and push) into the Above/Below fields
+4. Leave a field empty to hide that slot
+5. Open either public tool URL to verify
+
+Use affiliate banners, company promo HTML, or any network markup the same way.
+
+Design reference: `docs/superpowers/specs/2026-08-04-public-tools-ad-slots-design.md`
 
 ---
 
@@ -702,6 +721,12 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.9 (2026-08-04)
+
+- Shared **Above/Below ad slots** on both public tool pages (Settings → Public Tools)
+- Shortcodes remain ad-free; empty slots render nothing
+- Design: `docs/superpowers/specs/2026-08-04-public-tools-ad-slots-design.md`
 
 ### 1.1.8 (2026-08-04)
 

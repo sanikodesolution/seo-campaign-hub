@@ -116,6 +116,18 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 
 			<?php if ( $enabled && $core_shortener_on ) : ?>
 			<div class="sch-panel" style="margin-bottom:16px;background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:16px">
+				<h2><?php esc_html_e( 'Ads on this tool', 'seo-campaign-hub' ); ?></h2>
+				<p>
+					<?php esc_html_e( 'Shared Above/Below ad HTML for both public tool pages is managed under Settings → Public Tools. Shortcode embeds stay ad-free.', 'seo-campaign-hub' ); ?>
+				</p>
+				<p>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>">
+						<?php esc_html_e( 'Edit public tools ads', 'seo-campaign-hub' ); ?>
+					</a>
+				</p>
+			</div>
+
+			<div class="sch-panel" style="margin-bottom:16px;background:#fff;border:1px solid #c3c4c7;border-radius:4px;padding:16px">
 				<h2><?php esc_html_e( 'Try it now', 'seo-campaign-hub' ); ?></h2>
 				<p><?php esc_html_e( 'Same form visitors use (creates a real short link).', 'seo-campaign-hub' ); ?></p>
 				<?php

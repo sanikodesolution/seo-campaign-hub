@@ -106,6 +106,11 @@ $shortcodes = [
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-public-shortener' ) ); ?>"><?php esc_html_e( 'Open Public Shortener', 'seo-campaign-hub' ); ?></a></p>
 					</div>
 					<div>
+						<h3><?php esc_html_e( 'Public tools ads', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Paste shared Above/Below ad HTML under Settings → Public Tools. Appears on both /tools/ pages (not shortcodes). Use Header Scripts for AdSense loader code.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Open Public Tools settings', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
 						<h3><?php esc_html_e( 'QR Codes', 'seo-campaign-hub' ); ?></h3>
 						<p><?php esc_html_e( 'Generate QR codes for campaigns, offers, or short links for print and offline channels.', 'seo-campaign-hub' ); ?></p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-qr-codes' ) ); ?>"><?php esc_html_e( 'Open QR Codes', 'seo-campaign-hub' ); ?></a></p>

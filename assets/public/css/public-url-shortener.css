@@ -157,3 +157,25 @@
 .sch-pus-footnote a {
 	color: #2f6b75;
 }
+
+.sch-tools-ad {
+	margin: 1rem 0;
+	text-align: center;
+	overflow: auto;
+}
+
+.sch-tools-ad--above {
+	margin-top: 0;
+	margin-bottom: 1.25rem;
+}
+
+.sch-tools-ad--below {
+	margin-top: 1.25rem;
+	margin-bottom: 0;
+}
+
+.sch-tools-ad img,
+.sch-tools-ad iframe,
+.sch-tools-ad ins {
+	max-width: 100%;
+}

@@ -10,6 +10,8 @@ if ( ! defined( 'ABSPATH' ) ) {
 	exit;
 }
 
+use SEO_Campaign_Hub\Services\PublicToolsAds;
+
 ?><!DOCTYPE html>
 <html <?php language_attributes(); ?>>
 <head>
@@ -28,10 +30,12 @@ if ( ! defined( 'ABSPATH' ) ) {
 				<?php esc_html_e( 'Convert PNG or JPG to SVG in your browser. No login required — nothing is uploaded to the server.', 'seo-campaign-hub' ); ?>
 			</p>
 		</header>
+		<?php PublicToolsAds::render( 'above' ); ?>
 		<?php
 		$sch_embed = false;
 		include SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'src/Frontend/Views/image-to-svg-widget.php';
 		?>
+		<?php PublicToolsAds::render( 'below' ); ?>
 		<p class="sch-its-footnote">
 			<a href="<?php echo esc_url( home_url( '/' ) ); ?>">&larr; <?php esc_html_e( 'Back to site', 'seo-campaign-hub' ); ?></a>
 		</p>
