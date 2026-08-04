@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.8 - 2026-08-04
+- **Public URL Shortener**: `/tools/url-shortener/` (no login), shortcode `[sch_url_shortener]`
+- Destination URL only (auto slug); rate limit + honeypot; optional same-site destinations
+- Guest links show in admin URL Shortener with a **Public** badge
+- Design: `docs/superpowers/specs/2026-08-04-public-url-shortener-design.md`
+
 ## 1.1.6 - 2026-08-01
 - **Web Push (OneSignal)**: soft subscribe prompt, auto-notify on post publish, manual send from Web Push page and post editor
 - Serves `/OneSignalSDKWorker.js` from the plugin; App ID on front end; REST API Key server-only

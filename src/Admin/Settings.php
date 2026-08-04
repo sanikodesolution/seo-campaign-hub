@@ -409,6 +409,29 @@ class Settings {
                 'description' => __('Public page at /tools/image-to-svg/ (no login). Visitors convert PNG/JPG to SVG in the browser. Also available via shortcode [sch_image_to_svg]. After enabling, save Settings → Permalinks once if the page 404s.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
+            'enable_public_url_shortener' => [
+                'section' => 'tools',
+                'type' => 'checkbox',
+                'title' => __('Enable public URL shortener', 'seo-campaign-hub'),
+                'description' => __('Public page at /tools/url-shortener/ (no login). Visitors create short links with auto-generated slugs. Shortcode [sch_url_shortener]. Requires the core URL Shortener to be enabled. Flush Permalinks once if the page 404s.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'public_shortener_same_site_only' => [
+                'section' => 'tools',
+                'type' => 'checkbox',
+                'title' => __('Public shortener: same-site only', 'seo-campaign-hub'),
+                'description' => __('When enabled, guest short links may only point to URLs on this website’s host.', 'seo-campaign-hub'),
+                'default' => '0'
+            ],
+            'public_shortener_rate_limit' => [
+                'section' => 'tools',
+                'type' => 'number',
+                'title' => __('Public shortener rate limit', 'seo-campaign-hub'),
+                'description' => __('Max short links a visitor IP can create per hour (1–100). Default: 10.', 'seo-campaign-hub'),
+                'default' => '10',
+                'min' => 1,
+                'max' => 100
+            ],
 
             // Social Share (admin Posts list)
             'enable_admin_social_share' => [

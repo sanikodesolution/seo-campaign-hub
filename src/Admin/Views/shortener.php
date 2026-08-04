@@ -271,7 +271,17 @@ $notices = [
                                     <a href="<?php echo esc_url( $link->short_url ); ?>" target="_blank" rel="noopener">
                                         <code>/<?php echo esc_html( $prefix ); ?>/<?php echo esc_html( $link->slug ); ?></code>
                                     </a>
-                                    <?php if ( ! empty( $link->title ) ) : ?>
+                                    <?php
+                                    $is_public_guest = isset( $link->created_by ) && (int) $link->created_by === 0;
+                                    if ( $is_public_guest ) :
+                                        ?>
+                                        <span class="sch-status sch-status-public"><?php esc_html_e( 'Public', 'seo-campaign-hub' ); ?></span>
+                                    <?php endif; ?>
+                                    <?php
+                                    $show_title = ! empty( $link->title )
+                                        && ! ( $is_public_guest && $link->title === __( 'Public', 'seo-campaign-hub' ) );
+                                    if ( $show_title ) :
+                                        ?>
                                         <br><span class="description"><?php echo esc_html( $link->title ); ?></span>
                                     <?php endif; ?>
                                 </td>
@@ -331,6 +341,7 @@ $notices = [
     .sch-status { display:inline-block; padding:2px 10px; border-radius:12px; font-size:12px; font-weight:600; }
     .sch-status-active   { background:#d4edda; color:#155724; }
     .sch-status-inactive { background:#f8d7da; color:#721c24; }
+    .sch-status-public   { background:#e7f1f8; color:#0a4b78; margin-left:6px; }
     .sch-delete { color:#b32d2e; }
 </style>
 

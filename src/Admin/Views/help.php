@@ -28,6 +28,7 @@ $shortcodes = [
 	'[sch_short_link url="' . home_url( '/' . $prefix . '/deal' ) . '" target="_blank"]Shop the deal[/sch_short_link]',
 	'[sch_qr_code id="10" size="200"]',
 	'[sch_image_to_svg]',
+	'[sch_url_shortener]',
 ];
 ?>
 <div class="wrap">
@@ -98,6 +99,11 @@ $shortcodes = [
 							?>
 						</p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-shortener' ) ); ?>"><?php esc_html_e( 'Open URL Shortener', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
+						<h3><?php esc_html_e( 'Public URL Shortener', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Let visitors create short links without logging in at /tools/url-shortener/ or via [sch_url_shortener]. Guest links appear in URL Shortener with a Public badge.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-public-shortener' ) ); ?>"><?php esc_html_e( 'Open Public Shortener', 'seo-campaign-hub' ); ?></a></p>
 					</div>
 					<div>
 						<h3><?php esc_html_e( 'QR Codes', 'seo-campaign-hub' ); ?></h3>

@@ -91,7 +91,9 @@ class ShortenerService {
             'utm_campaign' => isset($data['utm_campaign']) ? sanitize_text_field($data['utm_campaign']) : '',
             'utm_term' => isset($data['utm_term']) ? sanitize_text_field($data['utm_term']) : '',
             'utm_content' => isset($data['utm_content']) ? sanitize_text_field($data['utm_content']) : '',
-            'created_by' => get_current_user_id(),
+            'created_by' => array_key_exists( 'created_by', $data )
+                ? (int) $data['created_by']
+                : (int) get_current_user_id(),
             'created_at' => current_time('mysql')
         ];
 

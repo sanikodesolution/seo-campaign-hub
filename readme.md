@@ -20,6 +20,7 @@ Use it to:
 - Share published posts from **SEO Campaign Hub → Social Share** and **Posts → All Posts** (Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link — browser share, no App ID)
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
 - Convert **PNG/JPG → SVG** on a public tool page (no login; browser-only)
+- Create **short URLs** on a public tool page (no login; rate-limited)
 - **Web Push** via OneSignal (soft prompt, auto on publish, manual send)
 
 ## Requirements
@@ -29,6 +30,7 @@ Use it to:
 - Administrator capability (`manage_options`) for admin screens
 - For **Image Optimization (WebP):** PHP **Imagick** with WebP support, or **GD** with `imagewebp` (no external API)
 - For **Image → SVG tool:** modern browser with FileReader/Canvas (no server conversion)
+- For **Public URL Shortener:** core URL Shortener enabled; visitors use REST create endpoint (rate-limited)
 - For **Web Push:** HTTPS site + free [OneSignal](https://onesignal.com) App ID and REST API Key
 
 ## Installation
@@ -67,6 +69,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **Analytics** | View traffic, clicks, and conversion data |
 | **Image Optimization** | Create WebP alongside JPEG/PNG; bulk optimize; serve WebP to supporting browsers |
 | **Image to SVG** | Convert PNG/JPG to SVG (admin tool + public page, no login) |
+| **Public Shortener** | Let visitors create short links (no login; rate-limited) |
 | **Social Share** | Enable networks and share published posts from the Posts list (browser share — no App ID) |
 | **Web Push** | OneSignal subscribe prompt, auto-notify on publish, manual send |
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, public tools, localization, and performance options |
@@ -259,6 +262,34 @@ Optional shortcode (same UI on any page/post):
 Limits: ~5 MB client-side; modern browser required.
 
 Design reference: `docs/superpowers/specs/2026-08-04-image-to-svg-tool-design.md`
+
+---
+
+## How to use the Public URL Shortener (no login)
+
+Let visitors create short links without a WordPress account. Slugs are auto-generated. Links use your normal `/go/{slug}` redirects and show up in **URL Shortener** with a **Public** badge.
+
+1. Go to **SEO Campaign Hub → Public Shortener** (also under **Settings → Public Tools**)
+2. Confirm the core **URL Shortener** is enabled
+3. Optionally enable **Same-site destinations only** and set the **rate limit** (default: 10 creates / IP / hour)
+4. Flush permalinks once: **Settings → Permalinks → Save Changes**
+5. Open the public URL (or click **Open public tool**):
+
+```text
+https://yoursite.com/tools/url-shortener/
+```
+
+6. Paste a long URL → **Shorten URL** → copy the short link
+
+Optional shortcode (same UI on any page/post):
+
+```text
+[sch_url_shortener]
+```
+
+Abuse protection: honeypot field + per-IP hourly rate limit. No captcha in v1.
+
+Design reference: `docs/superpowers/specs/2026-08-04-public-url-shortener-design.md`
 
 ---
 
@@ -490,6 +521,18 @@ or
 [sch_qr_code id="10" size="200"]
 ```
 
+### Public URL shortener form
+
+```text
+[sch_url_shortener]
+```
+
+### Image → SVG converter
+
+```text
+[sch_image_to_svg]
+```
+
 ---
 
 ## REST API
@@ -514,6 +557,7 @@ Most endpoints require an authenticated WordPress user with permission to manage
 | `GET` / `POST` | `/offers` | List / create offers |
 | `GET` / `PUT` / `DELETE` | `/offers/{id}` | Read / update / delete an offer |
 | `POST` | `/shorten` | Create a short link |
+| `POST` | `/public/shorten` | Create a short link (public tool; rate-limited) |
 | `GET` | `/links` | List short links |
 | `GET` / `DELETE` | `/links/{id}` | Read / delete a short link |
 | `GET` / `POST` | `/qr-codes` | List / generate QR codes |
@@ -644,6 +688,7 @@ Always keep a full WordPress backup before large imports.
 | Bulk Optimize disabled or no progress | Need WebP engine support and pending JPEG/PNG attachments; leave the page open until the AJAX batches finish |
 | Front end still serves JPEG/PNG | Enable **Serve WebP on front end**; confirm WebP files exist for that attachment; test in a WebP-capable browser |
 | `/tools/image-to-svg/` returns 404 | Enable **Settings → Public Tools → Image → SVG**; then **Settings → Permalinks → Save Changes** |
+| `/tools/url-shortener/` returns 404 or create fails | Enable **Public Shortener** + core **URL Shortener**; flush Permalinks; check rate limit / same-site setting |
 | PHP / WordPress version notice | Upgrade to PHP 8.2+ and WordPress 6.0+ |
 
 ---
@@ -657,6 +702,13 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.8 (2026-08-04)
+
+- Public **URL Shortener** tool at `/tools/url-shortener/` (no login; auto slug; rate limit + honeypot)
+- Shortcode `[sch_url_shortener]`; guest links appear in URL Shortener with a **Public** badge
+- Settings: same-site-only toggle + per-IP hourly rate limit
+- Design: `docs/superpowers/specs/2026-08-04-public-url-shortener-design.md`
 
 ### 1.1.7 (2026-08-04)
 

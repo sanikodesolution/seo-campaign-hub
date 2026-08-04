@@ -64,6 +64,7 @@ class AdminInit {
 
         add_action( 'admin_post_sch_image_opt_settings', [ $this, 'handle_image_opt_settings' ] );
         add_action( 'admin_post_sch_image_to_svg_settings', [ $this, 'handle_image_to_svg_settings' ] );
+        add_action( 'admin_post_sch_public_shortener_settings', [ $this, 'handle_public_shortener_settings' ] );
         add_action( 'wp_ajax_sch_image_optimize_batch', [ $this, 'ajax_image_optimize_batch' ] );
         add_action( 'admin_post_sch_social_share_settings', [ $this, 'handle_social_share_settings' ] );
         add_action( 'admin_post_sch_web_push_settings', [ $this, 'handle_web_push_settings' ] );
@@ -79,6 +80,7 @@ class AdminInit {
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_post_share_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_opt_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_to_svg_assets' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_public_shortener_assets' ] );
 
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
@@ -241,6 +243,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-image-to-svg',
             [ $this, 'render_image_to_svg' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'Public URL Shortener', 'seo-campaign-hub' ),
+            __( 'Public Shortener', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-public-shortener',
+            [ $this, 'render_public_shortener' ]
         );
 
         add_submenu_page(
@@ -458,6 +469,25 @@ class AdminInit {
         ] );
     }
 
+    /** @return void */
+    public function render_public_shortener(): void {
+        $service = null;
+        try {
+            $service = $this->container->get( 'public_shortener' );
+        } catch ( \Throwable $e ) {
+            $service = null;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        $notice = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+
+        $this->render_view( 'public-url-shortener', [
+            'page_title' => __( 'Public URL Shortener', 'seo-campaign-hub' ),
+            'service'    => $service,
+            'notice'     => $notice,
+        ] );
+    }
+
     /**
      * Save Image → SVG settings from dedicated admin page.
      *
@@ -480,6 +510,38 @@ class AdminInit {
         wp_safe_redirect(
             add_query_arg(
                 [ 'page' => 'seo-campaign-hub-image-to-svg', 'sch_notice' => 'saved' ],
+                admin_url( 'admin.php' )
+            )
+        );
+        exit;
+    }
+
+    /**
+     * Save public URL shortener settings from dedicated admin page.
+     *
+     * @return void
+     */
+    public function handle_public_shortener_settings(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_public_shortener_settings' );
+
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $options['enable_public_url_shortener']     = isset( $_POST['enable_public_url_shortener'] ) ? '1' : '0';
+        $options['public_shortener_same_site_only'] = isset( $_POST['public_shortener_same_site_only'] ) ? '1' : '0';
+        $rate = isset( $_POST['public_shortener_rate_limit'] ) ? absint( wp_unslash( $_POST['public_shortener_rate_limit'] ) ) : 10;
+        $options['public_shortener_rate_limit'] = max( 1, min( 100, $rate ) );
+
+        update_option( 'seo_campaign_hub_options', $options );
+
+        wp_safe_redirect(
+            add_query_arg(
+                [ 'page' => 'seo-campaign-hub-public-shortener', 'sch_notice' => 'saved' ],
                 admin_url( 'admin.php' )
             )
         );
@@ -629,6 +691,23 @@ class AdminInit {
 
         try {
             $this->container->get( 'image_to_svg' )->enqueue_assets();
+        } catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
+        }
+    }
+
+    /**
+     * Assets for Public URL Shortener admin page.
+     *
+     * @param string $hook_suffix Hook.
+     * @return void
+     */
+    public function enqueue_public_shortener_assets( string $hook_suffix ): void {
+        if ( strpos( $hook_suffix, 'seo-campaign-hub-public-shortener' ) === false ) {
+            return;
+        }
+
+        try {
+            $this->container->get( 'public_shortener' )->enqueue_assets();
         } catch ( \Throwable $e ) { // phpcs:ignore Generic.CodeAnalysis.EmptyStatement.DetectedCatch
         }
     }
