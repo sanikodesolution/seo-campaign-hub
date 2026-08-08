@@ -137,7 +137,7 @@ $shortcodes = [
 					</div>
 					<div>
 						<h3><?php esc_html_e( 'Cloud Backup', 'seo-campaign-hub' ); ?></h3>
-						<p><?php esc_html_e( 'Connect Google Drive, back up plugin data (same Everything JSON as Import/Export), schedule daily or weekly runs, and keep the newest N backups on Drive.', 'seo-campaign-hub' ); ?></p>
+						<p><?php esc_html_e( 'Save Client ID + Client Secret (password), then Sync with Google Drive in a browser popup. Back up plugin data (same Everything JSON as Import/Export), schedule daily or weekly runs, and keep the newest N backups on Drive.', 'seo-campaign-hub' ); ?></p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-cloud-backup' ) ); ?>"><?php esc_html_e( 'Open Cloud Backup', 'seo-campaign-hub' ); ?></a></p>
 					</div>
 					<div>
@@ -207,7 +207,7 @@ $shortcodes = [
 						</tr>
 						<tr>
 							<td><?php esc_html_e( 'Google Drive backup fails', 'seo-campaign-hub' ); ?></td>
-							<td><?php esc_html_e( 'Enable the Drive API, match the redirect URI exactly, connect Google, and check the Last backup message on Cloud Backup.', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Enable the Drive API, match the redirect URI exactly, allow popups, click Sync with Google Drive, and check the Last backup message on Cloud Backup.', 'seo-campaign-hub' ); ?></td>
 						</tr>
 						<tr>
 							<td><?php esc_html_e( 'Scheduled cloud backup never runs', 'seo-campaign-hub' ); ?></td>

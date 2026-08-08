@@ -3,7 +3,7 @@
  * Plugin Name: SEO Campaign Hub
  * Plugin URI: https://seocampaignhub.com
  * Description: Advanced SEO landing page builder with affiliate marketing, URL shortening, analytics, and campaign management
- * Version: 1.1.11
+ * Version: 1.1.12
  * Author: SANI UL HASSAN
  * Author URI: https://seocampaignhub.com
  * License: GPL v2 or later
@@ -28,7 +28,7 @@ if ( ! defined( 'ABSPATH' ) ) {
 // ============================================
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ) {
-    define( 'SEO_CAMPAIGN_HUB_VERSION', '1.1.11' );
+    define( 'SEO_CAMPAIGN_HUB_VERSION', '1.1.12' );
 }
 
 if ( ! defined( 'SEO_CAMPAIGN_HUB_PLUGIN_DIR' ) ) {

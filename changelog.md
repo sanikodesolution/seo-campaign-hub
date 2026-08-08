@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.12 - 2026-08-08
+- **Cloud Backup**: Sync Google Drive in a browser popup; keep Client Secret (password) + Sync both available
+- Google cancel/deny on the consent screen returns a clear error and closes the popup
+- Design: `docs/superpowers/specs/2026-08-08-google-drive-browser-sync-design.md`
+
 ## 1.1.11 - 2026-08-04
 - **Delay AdSense load**: Header AdSense scripts inject after a configurable delay (default 2s)
 - Public tools Above/Below ad slots lazy-load near the viewport when delay is enabled

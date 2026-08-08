@@ -81,6 +81,7 @@ class AdminInit {
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_opt_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_image_to_svg_assets' ] );
         add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_public_shortener_assets' ] );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_cloud_backup_assets' ] );
 
         add_filter(
             'plugin_action_links_' . SEO_CAMPAIGN_HUB_PLUGIN_BASENAME,
@@ -696,6 +697,29 @@ class AdminInit {
     }
 
     /**
+     * Enqueue Google Drive Sync popup script on Cloud Backup only.
+     *
+     * @param string $hook_suffix Admin hook.
+     * @return void
+     */
+    public function enqueue_cloud_backup_assets( string $hook_suffix ): void {
+        if ( strpos( $hook_suffix, 'seo-campaign-hub-cloud-backup' ) === false ) {
+            return;
+        }
+
+        $version = defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '1.0.0';
+        $url     = defined( 'SEO_CAMPAIGN_HUB_PLUGIN_URL' ) ? SEO_CAMPAIGN_HUB_PLUGIN_URL : '';
+
+        wp_enqueue_script(
+            'seo-campaign-hub-admin-cloud-backup',
+            $url . 'assets/admin/js/admin-cloud-backup.js',
+            [],
+            $version,
+            true
+        );
+    }
+
+    /**
      * Assets for Public URL Shortener admin page.
      *
      * @param string $hook_suffix Hook.
@@ -918,6 +942,21 @@ class AdminInit {
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended
         if ( ! isset( $_GET['page'] ) || 'seo-campaign-hub-cloud-backup' !== sanitize_key( wp_unslash( $_GET['page'] ) ) ) {
             return;
+        }
+
+        // phpcs:ignore WordPress.Security.NonceVerification.Recommended
+        if ( isset( $_GET['error'] ) && ! isset( $_GET['code'] ) ) {
+            if ( isset( $_GET['error_description'] ) ) {
+                $error_desc = sanitize_text_field( wp_unslash( $_GET['error_description'] ) );
+            } else {
+                $error_desc = sanitize_text_field( wp_unslash( (string) $_GET['error'] ) );
+            }
+            $this->redirect_to_cloud_backup(
+                [
+                    'sch_notice'  => 'oauth_fail',
+                    'sch_message' => rawurlencode( $error_desc !== '' ? $error_desc : __( 'Google authorization was cancelled.', 'seo-campaign-hub' ) ),
+                ]
+            );
         }
 
         // phpcs:ignore WordPress.Security.NonceVerification.Recommended

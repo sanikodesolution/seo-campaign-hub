@@ -51,6 +51,9 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 
 			<section class="sch-ie-panel" style="margin-bottom:24px">
 				<h2><?php esc_html_e( 'Cloud Storage — Google Drive', 'seo-campaign-hub' ); ?></h2>
+				<p class="description">
+					<?php esc_html_e( 'Keep both options: save your Client Secret (password), then use Sync to connect Google Drive in a browser popup. The parent Cloud Backup page stays open.', 'seo-campaign-hub' ); ?>
+				</p>
 
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="sch_cloud_backup_settings">
@@ -108,17 +111,18 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 
 				<p style="margin-top:16px">
 					<?php if ( $connected ) : ?>
-						<strong><?php esc_html_e( 'Connected:', 'seo-campaign-hub' ); ?></strong>
+						<strong><?php esc_html_e( 'Synced:', 'seo-campaign-hub' ); ?></strong>
 						<?php echo esc_html( (string) ( $tokens['email'] ?? __( 'Google account', 'seo-campaign-hub' ) ) ); ?>
 						<a class="button" href="<?php echo esc_url( wp_nonce_url( admin_url( 'admin-post.php?action=sch_google_disconnect' ), 'sch_google_disconnect' ) ); ?>">
 							<?php esc_html_e( 'Disconnect', 'seo-campaign-hub' ); ?>
 						</a>
 					<?php elseif ( $has_creds ) : ?>
-						<a class="button button-primary" href="<?php echo esc_url( $drive->get_auth_url() ); ?>">
-							<?php esc_html_e( 'Authenticate with Google Drive', 'seo-campaign-hub' ); ?>
+						<a class="button button-primary" href="<?php echo esc_url( $drive->get_auth_url() ); ?>" data-sch-google-auth="1">
+							<?php esc_html_e( 'Sync with Google Drive', 'seo-campaign-hub' ); ?>
 						</a>
+						<span class="description" style="margin-left:8px"><?php esc_html_e( 'Opens Google sign-in in a popup. Allow popups for this site if nothing appears.', 'seo-campaign-hub' ); ?></span>
 					<?php else : ?>
-						<p class="description"><?php esc_html_e( 'Save your Client ID and Secret, then authenticate.', 'seo-campaign-hub' ); ?></p>
+						<p class="description"><?php esc_html_e( 'Save your Client ID and Client Secret (password), then click Sync with Google Drive.', 'seo-campaign-hub' ); ?></p>
 					<?php endif; ?>
 				</p>
 			</section>

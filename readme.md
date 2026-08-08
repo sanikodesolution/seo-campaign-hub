@@ -16,7 +16,7 @@ Use it to:
 - Add schema markup and SEO meta automatically
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
-- Back up plugin data to **Google Drive** (manual + scheduled; WPvivid-style cloud workflow)
+- Back up plugin data to **Google Drive** (Client Secret + browser popup Sync; manual + scheduled)
 - Share published posts from **SEO Campaign Hub → Social Share** and **Posts → All Posts** (Facebook, X, LinkedIn, Pinterest, WhatsApp, Blogger, Telegram, Quora, Reddit, Email, Copy link — browser share, no App ID)
 - Optimize images to **WebP** (keep originals; auto on upload + bulk tool)
 - Convert **PNG/JPG → SVG** on a public tool page (no login; browser-only)
@@ -75,7 +75,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **Web Push** | OneSignal subscribe prompt, auto-notify on publish, manual send |
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, public tools, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
-| **Cloud Backup** | Connect Google Drive, run plugin backups, schedules, and retention |
+| **Cloud Backup** | Connect Google Drive (password + browser popup Sync), run plugin backups, schedules, and retention |
 | **Help** | In-plugin help and support notes |
 
 You can also reach the Dashboard and Settings from the plugin row on the **Plugins** page.
@@ -447,7 +447,7 @@ Back up plugin data to Google Drive (WPvivid-style workflow). **Phase 1** is ava
 
 ### Phase 1 (current)
 
-- Connect Google Drive with OAuth (Client ID + Secret)
+- Connect Google Drive with OAuth (Client ID + Secret password + browser popup Sync)
 - Parent folder + per-site subfolder + `plugin` folder for JSON files
 - Manual **Backup now** and optional schedule (daily / weekly)
 - Retention: keep the newest N plugin backups on Drive; older files are deleted automatically
@@ -465,10 +465,10 @@ Back up plugin data to Google Drive (WPvivid-style workflow). **Phase 1** is ava
 2. Enable the **Google Drive API**
 3. Create **OAuth 2.0 Client ID** credentials (application type: **Web application**)
 4. Under **Authorized redirect URIs**, add the exact **Authorized redirect URI** shown on **SEO Campaign Hub → Cloud Backup** (copy it from that page)
-5. Copy the **Client ID** and **Client Secret** into **Cloud Backup → Cloud Storage — Google Drive**
+5. Copy the **Client ID** and **Client Secret** into **Cloud Backup → Cloud Storage — Google Drive** (Secret stays a password field)
 6. Set **Parent folder on Drive** and **Site subfolder** (defaults work for most sites; use a unique subfolder per site if one Google account backs up multiple WordPress installs)
 7. Click **Save cloud settings**
-8. Click **Authenticate with Google Drive** and approve access in Google
+8. Click **Sync with Google Drive** — Google sign-in opens in a **browser popup** (allow popups if nothing appears). Approve access; the popup closes and this page shows **Synced**
 9. When connected, use **Backup plugin data to Google Drive** or configure **Backup schedule**
 
 OAuth uses the `drive.file` scope (files created by this app). Tokens are stored in WordPress options; only administrators (`manage_options`) can manage backups.
@@ -497,9 +497,9 @@ Each backup file contains the same **Everything** JSON payload as **Import/Expor
 
 ### Disconnect
 
-On **Cloud Backup**, when Google shows as connected, click **Disconnect** to remove stored tokens. Your Client ID, Secret, and folder names remain saved until you change them. Re-authenticate anytime to resume uploads.
+On **Cloud Backup**, when Google shows as connected, click **Disconnect** to remove stored tokens. Your Client ID, Secret, and folder names remain saved until you change them. Click **Sync with Google Drive** again anytime to resume uploads.
 
-Design reference: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md`
+Design reference: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.md` and `docs/superpowers/specs/2026-08-08-google-drive-browser-sync-design.md`
 
 ---
 
@@ -707,7 +707,7 @@ Always keep a full WordPress backup before large imports.
 | Smart redirect goes to wrong page | Confirm Localization is enabled, link rules and match priority are correct, and fallback Destination URL is valid |
 | Analytics show no data | Confirm Analytics is enabled and that Ignore Bots is not filtering your test traffic |
 | `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
-| Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, Google is connected, and folder names are valid; check **Last backup** message on Cloud Backup |
+| Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, allow popups, click **Sync with Google Drive**, and check **Last backup** on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
 | Soft prompt never appears | Enable Web Push + soft prompt; confirm App ID; use HTTPS; clear `sch_onesignal_prompt_dismissed` in browser localStorage; allow notifications not already granted |
@@ -730,6 +730,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.12 (2026-08-08)
+
+- Cloud Backup: **Sync with Google Drive** opens Google OAuth in a browser popup; Client Secret (password) field kept
+- Design: `docs/superpowers/specs/2026-08-08-google-drive-browser-sync-design.md`
 
 ### 1.1.11 (2026-08-04)
 

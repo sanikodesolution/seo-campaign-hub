@@ -12,7 +12,7 @@ WPvivid-style cloud backup inside SEO Campaign Hub: connect Google Drive, backup
 
 - Admin page: Cloud Backup (`seo-campaign-hub-cloud-backup`)
 - Google OAuth (Client ID + Secret in settings on page)
-- Authenticate / disconnect Google Drive
+- Authenticate / disconnect Google Drive (1.1.12: **Sync** opens Google OAuth in a browser popup; Client Secret password field kept)
 - Parent folder + per-site subfolder + `plugin` folder on Drive
 - Plugin JSON backup (Import/Export “everything” payload)
 - Manual “Backup now” + WP-Cron schedule (daily / weekly; hook `seo_campaign_hub_cloud_backup_cron`)
