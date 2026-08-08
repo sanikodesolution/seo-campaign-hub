@@ -445,6 +445,11 @@ class Activator {
             'enable_shortener'            => '1',
             'enable_analytics'            => '1',
             'geo_tracking'                => '1',
+            'block_core_directory_listing' => '1',
+            'clean_wp_head'               => '1',
+            'minify_assets'               => '1',
+            'defer_scripts'               => '1',
+            'lazy_load_images'            => '1',
         ];
 
         $changed = false;
@@ -461,6 +466,10 @@ class Activator {
 
         // One-time admin notice after activate/update for the shortener workflow.
         set_transient( 'seo_campaign_hub_show_setup_notice', '1.1.0', WEEK_IN_SECONDS );
+
+        if ( class_exists( '\SEO_Campaign_Hub\Services\IndexProtectionService' ) ) {
+            \SEO_Campaign_Hub\Services\IndexProtectionService::write_htaccess_rules();
+        }
     }
 
     /**

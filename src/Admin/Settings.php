@@ -115,7 +115,7 @@ class Settings {
             ],
             'advanced' => [
                 'title' => __('Advanced Settings', 'seo-campaign-hub'),
-                'description' => __('Advanced plugin settings.', 'seo-campaign-hub')
+                'description' => __('Front-end code optimization (clean head, minify HTML, defer JS) plus cache options for this plugin.', 'seo-campaign-hub')
             ]
         ];
     }
@@ -168,6 +168,13 @@ class Settings {
                 'type' => 'checkbox',
                 'title' => __('Enable Open Graph', 'seo-campaign-hub'),
                 'description' => __('Add Open Graph tags for social sharing.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'block_core_directory_listing' => [
+                'section' => 'seo',
+                'type' => 'checkbox',
+                'title' => __('Block core directory listings', 'seo-campaign-hub'),
+                'description' => __('Stop Google from indexing WordPress library folders (e.g. /wp-includes/SimplePie/?SD — “Duplicate without user-selected canonical”). Adds robots.txt Disallow plus Apache 403 rules. Does not block /wp-includes/js, css, images, or fonts. On Nginx set autoindex off in the server config.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
 
@@ -558,18 +565,32 @@ class Settings {
                 'min' => '60',
                 'max' => '86400'
             ],
+            'clean_wp_head' => [
+                'section' => 'advanced',
+                'type' => 'checkbox',
+                'title' => __('Clean WordPress head', 'seo-campaign-hub'),
+                'description' => __('Remove unused front-end code: emoji scripts, generator meta, RSD/shortlink, extra feeds, and oEmbed discovery tags. Safer PageSpeed win; does not affect wp-admin.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
             'minify_assets' => [
                 'section' => 'advanced',
                 'type' => 'checkbox',
-                'title' => __('Minify Assets', 'seo-campaign-hub'),
-                'description' => __('Minify CSS and JavaScript files.', 'seo-campaign-hub'),
+                'title' => __('Minify HTML', 'seo-campaign-hub'),
+                'description' => __('Minify front-end HTML (whitespace/comments). Script, style, and preformatted blocks are left intact. Skips Elementor preview, feeds, and sitemaps.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
             'defer_scripts' => [
                 'section' => 'advanced',
                 'type' => 'checkbox',
                 'title' => __('Defer JavaScript', 'seo-campaign-hub'),
-                'description' => __('Defer JavaScript loading for better performance.', 'seo-campaign-hub'),
+                'description' => __('Defer footer JavaScript so the page can render sooner. Skips jQuery, Elementor, and scripts already marked async/defer.', 'seo-campaign-hub'),
+                'default' => '1'
+            ],
+            'lazy_load_images' => [
+                'section' => 'advanced',
+                'type' => 'checkbox',
+                'title' => __('Lazy-load images and iframes', 'seo-campaign-hub'),
+                'description' => __('Keep native loading="lazy" enabled for images and iframes on the front end.', 'seo-campaign-hub'),
                 'default' => '1'
             ]
         ];

@@ -14,6 +14,8 @@ Use it to:
 - Generate QR codes for campaigns and links
 - Track clicks, page views, and conversions
 - Add schema markup and SEO meta automatically
+- Block WordPress core folder listings from Google (`/wp-includes/SimplePie/`)
+- Optimize front-end code (clean WP head, minify HTML, defer JS)
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
 - Back up plugin data to **Google Drive** (Client Secret + browser popup Sync; manual + scheduled)
@@ -371,6 +373,7 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 - Schema markup
 - Meta tags
 - Open Graph tags for social sharing
+- **Block core directory listings** — stop Google indexing `/wp-includes/SimplePie/` folder listings (`?SD`, `?MD`, “Duplicate without user-selected canonical”). Writes robots.txt Disallow + Apache 403. Leave on unless you use Nginx (then also set `autoindex off`).
 
 ### Analytics
 
@@ -415,10 +418,13 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 
 ### Advanced
 
-- Caching
-- Cache expiration
-- Minify assets
-- Defer JavaScript
+- Caching / cache expiration (plugin data cache)
+- **Clean WordPress head** — drop emoji, generator, extra feeds, oEmbed discovery
+- **Minify HTML** — smaller front-end markup (`script`/`style`/`pre` kept intact)
+- **Defer JavaScript** — footer scripts only; skips jQuery and Elementor
+- **Lazy-load images and iframes**
+
+These run on the public site only (not wp-admin). If a slider/layout breaks, turn off Defer or Minify HTML.
 
 Save settings after changing any options.
 
@@ -707,6 +713,8 @@ Always keep a full WordPress backup before large imports.
 | Smart redirect goes to wrong page | Confirm Localization is enabled, link rules and match priority are correct, and fallback Destination URL is valid |
 | Analytics show no data | Confirm Analytics is enabled and that Ignore Bots is not filtering your test traffic |
 | `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
+| GSC “Duplicate without user-selected canonical” on `/wp-includes/SimplePie/` | Enable **Settings → SEO → Block core directory listings**, visit wp-admin once (writes `.htaccess`), confirm a sample URL returns **403**, then re-validate in Search Console. On Nginx disable `autoindex`. |
+| Layout or slider breaks after optimize | Disable **Defer JavaScript** or **Minify HTML** under **Settings → Advanced**. jQuery/Elementor are never deferred. |
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, allow popups, click **Sync with Google Drive**, and check **Last backup** on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
@@ -730,6 +738,18 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.14 (2026-08-08)
+
+- Front-end code optimize: clean WP head, minify HTML, defer footer JS (skip jQuery/Elementor)
+- Settings → Advanced toggles now apply on the public site
+- Design: `docs/superpowers/specs/2026-08-08-frontend-code-optimize-design.md`
+
+### 1.1.13 (2026-08-08)
+
+- Block WP core directory listings from Google (SimplePie / “Duplicate without user-selected canonical”)
+- Settings → SEO: **Block core directory listings** (robots.txt + Apache 403)
+- Design: `docs/superpowers/specs/2026-08-08-index-protection-design.md`
 
 ### 1.1.12 (2026-08-08)
 

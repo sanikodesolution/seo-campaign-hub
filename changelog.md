@@ -1,5 +1,15 @@
 # Changelog
 
+## 1.1.14 - 2026-08-08
+- **Front-end code optimize**: Clean WP head, minify HTML, defer footer JS (skip jQuery/Elementor), lazy-load media
+- Settings → Advanced toggles now apply on the public site (not admin)
+- Design: `docs/superpowers/specs/2026-08-08-frontend-code-optimize-design.md`
+
+## 1.1.13 - 2026-08-08
+- **SEO**: Block WordPress core directory listings (SimplePie `?SD` / “Duplicate without user-selected canonical”)
+- robots.txt Disallow + Apache 403 for `/wp-includes/SimplePie/` and other library folders; Settings → SEO toggle (on by default)
+- Design: `docs/superpowers/specs/2026-08-08-index-protection-design.md`
+
 ## 1.1.12 - 2026-08-08
 - **Cloud Backup**: Sync Google Drive in a browser popup; keep Client Secret (password) + Sync both available
 - Google cancel/deny on the consent screen returns a clear error and closes the popup

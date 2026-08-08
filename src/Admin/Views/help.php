@@ -206,6 +206,14 @@ $shortcodes = [
 							<td><?php esc_html_e( 'Enable Ads.txt in Settings, paste valid content, and remove any conflicting physical ads.txt or other plugin that serves the same path.', 'seo-campaign-hub' ); ?></td>
 						</tr>
 						<tr>
+							<td><?php esc_html_e( 'Google flags /wp-includes/SimplePie/ duplicates', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Those are Apache folder listings, not posts. Enable Settings → SEO → Block core directory listings, open wp-admin once, confirm the URL returns 403, then re-validate in Search Console. On Nginx turn autoindex off.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
+							<td><?php esc_html_e( 'Layout or slider breaks after optimize', 'seo-campaign-hub' ); ?></td>
+							<td><?php esc_html_e( 'Turn off Defer JavaScript or Minify HTML under Settings → Advanced. Elementor preview is skipped automatically; jQuery and Elementor scripts are never deferred.', 'seo-campaign-hub' ); ?></td>
+						</tr>
+						<tr>
 							<td><?php esc_html_e( 'Google Drive backup fails', 'seo-campaign-hub' ); ?></td>
 							<td><?php esc_html_e( 'Enable the Drive API, match the redirect URI exactly, allow popups, click Sync with Google Drive, and check the Last backup message on Cloud Backup.', 'seo-campaign-hub' ); ?></td>
 						</tr>

@@ -100,6 +100,14 @@ function seo_campaign_hub_uninstall() {
     wp_clear_scheduled_hook( 'seo_campaign_hub_report_cron' );
     wp_clear_scheduled_hook( 'seo_campaign_hub_email_cron' );
     wp_clear_scheduled_hook( 'seo_campaign_hub_cloud_backup_cron' );
+
+    $index_protection = plugin_dir_path( __FILE__ ) . 'src/Services/IndexProtectionService.php';
+    if ( is_readable( $index_protection ) ) {
+        require_once $index_protection;
+        if ( class_exists( '\SEO_Campaign_Hub\Services\IndexProtectionService' ) ) {
+            \SEO_Campaign_Hub\Services\IndexProtectionService::remove_htaccess_rules();
+        }
+    }
 }
 
 /**

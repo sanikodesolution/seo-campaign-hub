@@ -247,6 +247,14 @@ final class Plugin {
         $this->container->singleton( 'public_shortener', function () {
             return new \SEO_Campaign_Hub\Services\PublicShortenerService();
         } );
+
+        $this->container->singleton( 'index_protection', function () {
+            return new \SEO_Campaign_Hub\Services\IndexProtectionService();
+        } );
+
+        $this->container->singleton( 'frontend_optimizer', function () {
+            return new \SEO_Campaign_Hub\Services\FrontEndOptimizerService();
+        } );
     }
 
     // =========================================================
@@ -326,6 +334,24 @@ final class Plugin {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log( 'SEO Campaign Hub public shortener failed: ' . $e->getMessage() );
+            }
+        }
+
+        try {
+            $this->container->get( 'index_protection' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub index protection failed: ' . $e->getMessage() );
+            }
+        }
+
+        try {
+            $this->container->get( 'frontend_optimizer' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub front-end optimizer failed: ' . $e->getMessage() );
             }
         }
     }
