@@ -52,11 +52,19 @@ class FullSiteBackupService {
 
 		$existing = $this->get_job();
 		if ( is_array( $existing ) && ( $existing['status'] ?? '' ) === 'running' ) {
-			return [
-				'success' => true,
-				'message' => __( 'Backup already in progress.', 'seo-campaign-hub' ),
-				'job'     => $this->public_job( $existing ),
-			];
+			$started = (int) ( $existing['created_at'] ?? 0 );
+			if ( $started > 0 && ( time() - $started ) < 30 * MINUTE_IN_SECONDS ) {
+				return [
+					'success' => true,
+					'message' => __( 'Backup already in progress.', 'seo-campaign-hub' ),
+					'job'     => $this->public_job( $existing ),
+				];
+			}
+			// Stale job — allow a new run.
+			$this->cleanup_work_dir( (string) ( $existing['work_dir'] ?? '' ) );
+			if ( ! empty( $existing['zip_path'] ) && is_string( $existing['zip_path'] ) && file_exists( $existing['zip_path'] ) ) {
+				wp_delete_file( $existing['zip_path'] );
+			}
 		}
 
 		// Clear previous download zip if any.
@@ -66,11 +74,10 @@ class FullSiteBackupService {
 			}
 		}
 
-		$base = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'uploads/temp/';
-		if ( ! file_exists( $base ) ) {
-			wp_mkdir_p( $base );
+		$base = $this->get_temp_base_dir();
+		if ( '' === $base ) {
+			return [ 'success' => false, 'message' => __( 'Could not create a writable backup temp folder (check wp-content/uploads permissions).', 'seo-campaign-hub' ) ];
 		}
-		$this->ensure_temp_htaccess( $base );
 
 		$stamp    = gmdate( 'Y-m-d-His' );
 		$work_dir = $base . 'full-' . $stamp . '-' . wp_generate_password( 6, false ) . '/';
@@ -484,14 +491,14 @@ class FullSiteBackupService {
 			$files = [];
 		}
 
-		$zip = new \ZipArchive();
-		$flags = ! empty( $job['zip_opened'] ) ? 0 : ( \ZipArchive::CREATE | \ZipArchive::OVERWRITE );
-		if ( true !== $zip->open( (string) $job['zip_path'], $flags ) ) {
-			throw new \RuntimeException( __( 'Could not create ZIP archive.', 'seo-campaign-hub' ) );
-		}
+		$zip_path = (string) $job['zip_path'];
+		$zip      = $this->open_zip_archive( $zip_path, empty( $job['zip_opened'] ) );
 
 		if ( empty( $job['zip_opened'] ) ) {
-			$zip->addFile( (string) $job['sql_path'], 'database.sql' );
+			$sql = (string) $job['sql_path'];
+			if ( is_readable( $sql ) ) {
+				$zip->addFile( $sql, 'database.sql' );
+			}
 			$job['zip_opened'] = 1;
 		}
 
@@ -504,7 +511,11 @@ class FullSiteBackupService {
 			if ( ! is_array( $item ) || empty( $item['abs'] ) || empty( $item['rel'] ) || ! is_readable( $item['abs'] ) ) {
 				continue;
 			}
-			$zip->addFile( (string) $item['abs'], (string) $item['rel'] );
+			$rel = ltrim( str_replace( '\\', '/', (string) $item['rel'] ), '/' );
+			if ( $rel === '' || false !== strpos( $rel, '..' ) ) {
+				continue;
+			}
+			$zip->addFile( (string) $item['abs'], $rel );
 		}
 
 		$zip->close();
@@ -713,6 +724,91 @@ class FullSiteBackupService {
 		}
 		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_rmdir
 		@rmdir( $dir );
+	}
+
+	/**
+	 * Writable temp directory for ZIP + SQL (uploads preferred).
+	 *
+	 * @return string Trailing-slash path or empty on failure.
+	 */
+	private function get_temp_base_dir(): string {
+		$candidates = [];
+
+		$uploads = wp_upload_dir( null, false );
+		if ( empty( $uploads['error'] ) && ! empty( $uploads['basedir'] ) ) {
+			$candidates[] = trailingslashit( (string) $uploads['basedir'] ) . 'sch-backups/';
+		}
+
+		$candidates[] = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'uploads/temp/';
+
+		if ( function_exists( 'get_temp_dir' ) ) {
+			$candidates[] = trailingslashit( get_temp_dir() ) . 'sch-backups/';
+		}
+
+		foreach ( $candidates as $dir ) {
+			if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+				continue;
+			}
+			if ( ! is_writable( $dir ) ) {
+				continue;
+			}
+			$this->ensure_temp_htaccess( $dir );
+			$index = trailingslashit( $dir ) . 'index.php';
+			if ( ! file_exists( $index ) ) {
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+				file_put_contents( $index, "<?php\n// Silence is golden.\n" );
+			}
+			return trailingslashit( $dir );
+		}
+
+		return '';
+	}
+
+	/**
+	 * Open or create a zip with retries (avoids OVERWRITE-on-missing-file failures).
+	 *
+	 * @param string $path   Zip path.
+	 * @param bool   $create Create if missing.
+	 * @return \ZipArchive
+	 */
+	private function open_zip_archive( string $path, bool $create ): \ZipArchive {
+		$dir = dirname( $path );
+		if ( ! is_dir( $dir ) && ! wp_mkdir_p( $dir ) ) {
+			throw new \RuntimeException( __( 'Backup temp folder is not writable.', 'seo-campaign-hub' ) );
+		}
+		if ( ! is_writable( $dir ) ) {
+			throw new \RuntimeException( __( 'Backup temp folder is not writable. Check wp-content/uploads permissions.', 'seo-campaign-hub' ) );
+		}
+
+		$zip = new \ZipArchive();
+
+		if ( $create ) {
+			if ( file_exists( $path ) ) {
+				wp_delete_file( $path );
+			}
+			$result = $zip->open( $path, \ZipArchive::CREATE );
+			if ( true !== $result ) {
+				$result = $zip->open( $path, \ZipArchive::CREATE | \ZipArchive::OVERWRITE );
+			}
+		} else {
+			$result = $zip->open( $path );
+			if ( true !== $result && ! file_exists( $path ) ) {
+				$result = $zip->open( $path, \ZipArchive::CREATE );
+			}
+		}
+
+		if ( true === $result ) {
+			return $zip;
+		}
+
+		$code = is_int( $result ) ? $result : 0;
+		throw new \RuntimeException(
+			sprintf(
+				/* translators: %d: ZipArchive error code */
+				__( 'Could not create ZIP archive (error %d). Check disk space and that PHP zip extension can write to wp-content/uploads.', 'seo-campaign-hub' ),
+				$code
+			)
+		);
 	}
 
 	/**
