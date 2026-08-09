@@ -16,6 +16,7 @@ Use it to:
 - Add schema markup and SEO meta automatically
 - Block WordPress core folder listings from Google (`/wp-includes/SimplePie/`)
 - Optimize front-end code (clean WP head, minify HTML, defer JS)
+- Replace any URL site-wide (live rules + database find/replace)
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
 - Back up plugin data to **Google Drive** (Client Secret + browser popup Sync; manual + scheduled)
@@ -78,6 +79,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **Settings** | Configure SEO, analytics, shortener, QR, ads.txt, public tools, localization, and performance options |
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive (password + browser popup Sync), run plugin backups, schedules, and retention |
+| **URL Replace** | Replace any URL site-wide: live rules (anytime) + optional database rewrite |
 | **Help** | In-plugin help and support notes |
 
 You can also reach the Dashboard and Settings from the plugin row on the **Plugins** page.
@@ -509,6 +511,19 @@ Design reference: `docs/superpowers/specs/2026-07-27-google-drive-backup-design.
 
 ---
 
+## URL Replace
+
+Swap any URL across the site from **SEO Campaign Hub → URL Replace**.
+
+1. **Live rules** — enter Find URL + Replace URL → **Add live rule**. The public site HTML updates immediately (posts, Elementor, menus). Turn off or delete the rule anytime. The database is not changed.
+2. **Database replace** (optional, permanent) — same Find/Replace → **Dry run** to count rows → backup → check confirm → **Apply to database**. Updates post content, post meta (including Elementor JSON), options, comments, and short-link destinations (serialized-safe).
+
+Find must be at least 8 characters. Do not use `javascript:` targets.
+
+Design: `docs/superpowers/specs/2026-08-09-url-replace-design.md`
+
+---
+
 ## Shortcodes
 
 You can embed plugin content in posts, pages, or landing templates.
@@ -715,6 +730,7 @@ Always keep a full WordPress backup before large imports.
 | `/ads.txt` wrong, empty, or 404 | Enable **Settings → Ads.txt**; remove conflicting physical `ads.txt` or disable another plugin that serves it; flush permalinks once |
 | GSC “Duplicate without user-selected canonical” on `/wp-includes/SimplePie/` | Enable **Settings → SEO → Block core directory listings**, visit wp-admin once (writes `.htaccess`), confirm a sample URL returns **403**, then re-validate in Search Console. On Nginx disable `autoindex`. |
 | Layout or slider breaks after optimize | Disable **Defer JavaScript** or **Minify HTML** under **Settings → Advanced**. jQuery/Elementor are never deferred. |
+| Wrong URL still showing after live replace | Hard-refresh / purge LiteSpeed or host cache. Confirm the live rule is **On** and the Find string matches the URL exactly (including https). |
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, allow popups, click **Sync with Google Drive**, and check **Last backup** on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
@@ -738,6 +754,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.15 (2026-08-09)
+
+- **URL Replace** admin page: live URL rules (anytime) + dry-run/apply database replace
+- Design: `docs/superpowers/specs/2026-08-09-url-replace-design.md`
 
 ### 1.1.14 (2026-08-08)
 

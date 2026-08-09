@@ -56,6 +56,11 @@ class AdminInit {
         add_action( 'admin_post_sch_export_data', [ $this, 'handle_export_data' ] );
         add_action( 'admin_post_sch_import_data', [ $this, 'handle_import_data' ] );
 
+        add_action( 'admin_post_sch_url_replace_rule_add', [ $this, 'handle_url_replace_rule_add' ] );
+        add_action( 'admin_post_sch_url_replace_rule_delete', [ $this, 'handle_url_replace_rule_delete' ] );
+        add_action( 'admin_post_sch_url_replace_rule_toggle', [ $this, 'handle_url_replace_rule_toggle' ] );
+        add_action( 'admin_post_sch_url_replace_db', [ $this, 'handle_url_replace_db' ] );
+
         add_action( 'admin_post_sch_cloud_backup_settings', [ $this, 'handle_cloud_backup_settings' ] );
         add_action( 'admin_post_sch_cloud_backup_now', [ $this, 'handle_cloud_backup_now' ] );
         add_action( 'admin_post_sch_cloud_backup_schedule', [ $this, 'handle_cloud_backup_schedule' ] );
@@ -289,6 +294,15 @@ class AdminInit {
             'manage_options',
             'seo-campaign-hub-import-export',
             [ $this, 'render_import_export' ]
+        );
+
+        add_submenu_page(
+            'seo-campaign-hub',
+            __( 'URL Replace', 'seo-campaign-hub' ),
+            __( 'URL Replace', 'seo-campaign-hub' ),
+            'manage_options',
+            'seo-campaign-hub-url-replace',
+            [ $this, 'render_url_replace' ]
         );
 
         add_submenu_page(
@@ -749,6 +763,124 @@ class AdminInit {
             'page_title' => __( 'Settings', 'seo-campaign-hub' ),
             'settings'   => $settings,
         ] );
+    }
+
+    /** @return void */
+    public function render_url_replace(): void {
+        $service = null;
+        try {
+            $service = $this->container->get( 'url_replace' );
+        } catch ( \Throwable $e ) {
+            $service = null;
+        }
+
+        // phpcs:disable WordPress.Security.NonceVerification.Recommended
+        $notice  = isset( $_GET['sch_notice'] ) ? sanitize_key( wp_unslash( $_GET['sch_notice'] ) ) : '';
+        $message = isset( $_GET['sch_message'] ) ? sanitize_text_field( rawurldecode( wp_unslash( $_GET['sch_message'] ) ) ) : '';
+        // phpcs:enable
+
+        $result = get_transient( 'sch_url_replace_result_' . get_current_user_id() );
+        $counts = ( is_array( $result ) && isset( $result['counts'] ) && is_array( $result['counts'] ) ) ? $result['counts'] : [];
+
+        $this->render_view(
+            'url-replace',
+            [
+                'page_title' => __( 'URL Replace', 'seo-campaign-hub' ),
+                'rules'      => $service instanceof \SEO_Campaign_Hub\Services\UrlReplaceService ? $service->get_rules() : [],
+                'notice'     => $notice,
+                'message'    => $message,
+                'counts'     => $counts,
+            ]
+        );
+    }
+
+    /**
+     * @return void
+     */
+    private function redirect_to_url_replace( array $args = [] ): void {
+        wp_safe_redirect(
+            add_query_arg( $args, admin_url( 'admin.php?page=seo-campaign-hub-url-replace' ) )
+        );
+        exit;
+    }
+
+    /** @return void */
+    public function handle_url_replace_rule_add(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_url_replace_rule_add' );
+
+        $from = isset( $_POST['find_url'] ) ? wp_unslash( $_POST['find_url'] ) : '';
+        $to   = isset( $_POST['replace_url'] ) ? wp_unslash( $_POST['replace_url'] ) : '';
+        $from = sanitize_text_field( $from );
+        $to   = esc_url_raw( $to ) !== '' ? esc_url_raw( $to ) : sanitize_text_field( $to );
+
+        $result = $this->container->get( 'url_replace' )->add_rule( $from, $to );
+        $this->redirect_to_url_replace(
+            [
+                'sch_notice'  => ! empty( $result['ok'] ) ? 'saved' : 'error',
+                'sch_message' => rawurlencode( (string) ( $result['message'] ?? '' ) ),
+            ]
+        );
+    }
+
+    /** @return void */
+    public function handle_url_replace_rule_delete(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_url_replace_rule_delete' );
+
+        $id = isset( $_GET['rule_id'] ) ? sanitize_key( wp_unslash( $_GET['rule_id'] ) ) : '';
+        $this->container->get( 'url_replace' )->delete_rule( $id );
+        $this->redirect_to_url_replace( [ 'sch_notice' => 'deleted' ] );
+    }
+
+    /** @return void */
+    public function handle_url_replace_rule_toggle(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_url_replace_rule_toggle' );
+
+        $id = isset( $_GET['rule_id'] ) ? sanitize_key( wp_unslash( $_GET['rule_id'] ) ) : '';
+        $this->container->get( 'url_replace' )->toggle_rule( $id );
+        $this->redirect_to_url_replace( [ 'sch_notice' => 'saved' ] );
+    }
+
+    /** @return void */
+    public function handle_url_replace_db(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_url_replace_db' );
+
+        $from    = isset( $_POST['find_url'] ) ? sanitize_text_field( wp_unslash( $_POST['find_url'] ) ) : '';
+        $to_raw  = isset( $_POST['replace_url'] ) ? wp_unslash( $_POST['replace_url'] ) : '';
+        $to      = esc_url_raw( $to_raw ) !== '' ? esc_url_raw( $to_raw ) : sanitize_text_field( $to_raw );
+        $apply   = isset( $_POST['sch_apply'] );
+        $dry     = ! $apply;
+        $confirm = ! empty( $_POST['sch_confirm'] );
+
+        if ( $apply && ! $confirm ) {
+            $this->redirect_to_url_replace(
+                [
+                    'sch_notice'  => 'error',
+                    'sch_message' => rawurlencode( __( 'Check the confirmation box before Apply.', 'seo-campaign-hub' ) ),
+                ]
+            );
+        }
+
+        $result = $this->container->get( 'url_replace' )->replace_in_database( $from, $to, $dry );
+        set_transient( 'sch_url_replace_result_' . get_current_user_id(), $result, 10 * MINUTE_IN_SECONDS );
+
+        $this->redirect_to_url_replace(
+            [
+                'sch_notice'  => ! empty( $result['ok'] ) ? ( $dry ? 'dry_ok' : 'db_ok' ) : 'error',
+                'sch_message' => rawurlencode( (string) ( $result['message'] ?? '' ) ),
+            ]
+        );
     }
 
     /** @return void */

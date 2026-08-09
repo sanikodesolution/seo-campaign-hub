@@ -255,6 +255,10 @@ final class Plugin {
         $this->container->singleton( 'frontend_optimizer', function () {
             return new \SEO_Campaign_Hub\Services\FrontEndOptimizerService();
         } );
+
+        $this->container->singleton( 'url_replace', function () {
+            return new \SEO_Campaign_Hub\Services\UrlReplaceService();
+        } );
     }
 
     // =========================================================
@@ -352,6 +356,15 @@ final class Plugin {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log( 'SEO Campaign Hub front-end optimizer failed: ' . $e->getMessage() );
+            }
+        }
+
+        try {
+            $this->container->get( 'url_replace' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub URL replace failed: ' . $e->getMessage() );
             }
         }
     }

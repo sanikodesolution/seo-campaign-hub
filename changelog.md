@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.15 - 2026-08-09
+- **URL Replace**: live find→replace rules for any URL on the public site (change anytime)
+- Optional serialized/JSON-safe database replace (posts, meta, options, comments, short links) with dry run
+- Design: `docs/superpowers/specs/2026-08-09-url-replace-design.md`
+
 ## 1.1.14 - 2026-08-08
 - **Front-end code optimize**: Clean WP head, minify HTML, defer footer JS (skip jQuery/Elementor), lazy-load media
 - Settings → Advanced toggles now apply on the public site (not admin)

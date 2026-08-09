@@ -30,6 +30,7 @@ function seo_campaign_hub_uninstall() {
         'seo_campaign_hub_analytics_anonymize_ip',
         'seo_campaign_hub_analytics_ignore_bots',
         'seo_campaign_hub_analytics_ignore_users',
+        'seo_campaign_hub_url_replacements',
     ];
 
     foreach ( $options as $option ) {
