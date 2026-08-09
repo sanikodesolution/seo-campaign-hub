@@ -36,10 +36,13 @@ class FullSiteBackupService {
 	/**
 	 * Start a new full-site backup job.
 	 *
+	 * @param string $destination drive|download.
 	 * @return array{success:bool,message:string,job?:array<string,mixed>}
 	 */
-	public function start_job(): array {
-		if ( ! $this->drive->is_connected() ) {
+	public function start_job( string $destination = 'drive' ): array {
+		$destination = ( 'download' === $destination ) ? 'download' : 'drive';
+
+		if ( 'drive' === $destination && ! $this->drive->is_connected() ) {
 			return [ 'success' => false, 'message' => __( 'Connect Google Drive first.', 'seo-campaign-hub' ) ];
 		}
 
@@ -54,6 +57,13 @@ class FullSiteBackupService {
 				'message' => __( 'Backup already in progress.', 'seo-campaign-hub' ),
 				'job'     => $this->public_job( $existing ),
 			];
+		}
+
+		// Clear previous download zip if any.
+		if ( is_array( $existing ) && ! empty( $existing['zip_path'] ) && is_string( $existing['zip_path'] ) && file_exists( $existing['zip_path'] ) ) {
+			if ( ( $existing['destination'] ?? '' ) === 'download' || ( $existing['status'] ?? '' ) !== 'running' ) {
+				wp_delete_file( $existing['zip_path'] );
+			}
 		}
 
 		$base = SEO_CAMPAIGN_HUB_PLUGIN_DIR . 'uploads/temp/';
@@ -77,6 +87,7 @@ class FullSiteBackupService {
 
 		$job = [
 			'id'             => wp_generate_password( 12, false ),
+			'destination'    => $destination,
 			'status'         => 'running',
 			'phase'          => 'dump',
 			'created_at'     => time(),
@@ -93,6 +104,8 @@ class FullSiteBackupService {
 			'upload_url'     => '',
 			'upload_offset'  => 0,
 			'upload_size'    => 0,
+			'download_token' => '',
+			'download_expires' => 0,
 			'message'        => __( 'Starting database dump…', 'seo-campaign-hub' ),
 			'percent'        => 1,
 			'error'          => '',
@@ -158,6 +171,9 @@ class FullSiteBackupService {
 				case 'upload':
 					$job = $this->phase_upload( $job );
 					break;
+				case 'finish_download':
+					$job = $this->phase_finish_download( $job );
+					break;
 				case 'finish':
 					$job = $this->phase_finish( $job );
 					break;
@@ -182,13 +198,18 @@ class FullSiteBackupService {
 		$this->save_job( $job );
 
 		$done = ( $job['status'] ?? '' ) !== 'running';
-		return [
+		$public = $this->public_job( $job );
+		$out = [
 			'success' => ( $job['status'] ?? '' ) !== 'error',
 			'done'    => $done,
 			'message' => (string) ( $job['message'] ?? '' ),
 			'percent' => (int) ( $job['percent'] ?? 0 ),
-			'job'     => $this->public_job( $job ),
+			'job'     => $public,
 		];
+		if ( ! empty( $public['download_url'] ) ) {
+			$out['download_url'] = $public['download_url'];
+		}
+		return $out;
 	}
 
 	/**
@@ -244,14 +265,24 @@ class FullSiteBackupService {
 	 * @return array<string, mixed>
 	 */
 	private function public_job( array $job ): array {
-		return [
-			'id'      => (string) ( $job['id'] ?? '' ),
-			'status'  => (string) ( $job['status'] ?? '' ),
-			'phase'   => (string) ( $job['phase'] ?? '' ),
-			'message' => (string) ( $job['message'] ?? '' ),
-			'percent' => (int) ( $job['percent'] ?? 0 ),
-			'error'   => (string) ( $job['error'] ?? '' ),
+		$out = [
+			'id'          => (string) ( $job['id'] ?? '' ),
+			'status'      => (string) ( $job['status'] ?? '' ),
+			'phase'       => (string) ( $job['phase'] ?? '' ),
+			'destination' => (string) ( $job['destination'] ?? 'drive' ),
+			'message'     => (string) ( $job['message'] ?? '' ),
+			'percent'     => (int) ( $job['percent'] ?? 0 ),
+			'error'       => (string) ( $job['error'] ?? '' ),
 		];
+
+		if ( ( $job['status'] ?? '' ) === 'done' && ( $job['destination'] ?? '' ) === 'download' && ! empty( $job['download_token'] ) ) {
+			$out['download_url'] = wp_nonce_url(
+				admin_url( 'admin-post.php?action=sch_full_site_backup_download&token=' . rawurlencode( (string) $job['download_token'] ) ),
+				'sch_full_site_backup_download'
+			);
+		}
+
+		return $out;
 	}
 
 	/**
@@ -442,11 +473,17 @@ class FullSiteBackupService {
 		);
 
 		if ( $end >= $total ) {
-			$job['phase']         = 'upload';
-			$job['upload_offset'] = 0;
-			$job['upload_size']   = (int) filesize( (string) $job['zip_path'] );
-			$job['message']       = __( 'Uploading to Google Drive…', 'seo-campaign-hub' );
-			$job['percent']       = 78;
+			if ( ( $job['destination'] ?? 'drive' ) === 'download' ) {
+				$job['phase']   = 'finish_download';
+				$job['message'] = __( 'Preparing download…', 'seo-campaign-hub' );
+				$job['percent'] = 95;
+			} else {
+				$job['phase']         = 'upload';
+				$job['upload_offset'] = 0;
+				$job['upload_size']   = (int) filesize( (string) $job['zip_path'] );
+				$job['message']       = __( 'Uploading to Google Drive…', 'seo-campaign-hub' );
+				$job['percent']       = 78;
+			}
 		}
 
 		return $job;
@@ -518,6 +555,71 @@ class FullSiteBackupService {
 		);
 
 		return $job;
+	}
+
+	/**
+	 * Finish local download backup (keep ZIP for download).
+	 *
+	 * @param array<string, mixed> $job Job.
+	 * @return array<string, mixed>
+	 */
+	private function phase_finish_download( array $job ): array {
+		$this->cleanup_work_dir( (string) ( $job['work_dir'] ?? '' ) );
+
+		if ( empty( $job['zip_path'] ) || ! file_exists( (string) $job['zip_path'] ) ) {
+			throw new \RuntimeException( __( 'ZIP file missing for download.', 'seo-campaign-hub' ) );
+		}
+
+		$token = wp_generate_password( 32, false );
+		$job['download_token']   = $token;
+		$job['download_expires'] = time() + HOUR_IN_SECONDS;
+		$job['status']           = 'done';
+		$job['phase']            = 'done';
+		$job['percent']          = 100;
+		$job['message']          = __( 'Backup ready. Starting download…', 'seo-campaign-hub' );
+		$this->record_status( true, __( 'Full site backup ZIP ready to download.', 'seo-campaign-hub' ) );
+
+		return $job;
+	}
+
+	/**
+	 * Stream ZIP to the browser for an admin with a valid token.
+	 *
+	 * @param string $token Download token.
+	 * @return void
+	 */
+	public function serve_download( string $token ): void {
+		$job = $this->get_job();
+		if ( ! is_array( $job ) || ( $job['destination'] ?? '' ) !== 'download' ) {
+			wp_die( esc_html__( 'No downloadable backup found.', 'seo-campaign-hub' ), 404 );
+		}
+		if ( empty( $job['download_token'] ) || ! hash_equals( (string) $job['download_token'], $token ) ) {
+			wp_die( esc_html__( 'Invalid download token.', 'seo-campaign-hub' ), 403 );
+		}
+		if ( time() > (int) ( $job['download_expires'] ?? 0 ) ) {
+			wp_die( esc_html__( 'Download link expired. Run backup again.', 'seo-campaign-hub' ), 410 );
+		}
+
+		$path = (string) ( $job['zip_path'] ?? '' );
+		$name = (string) ( $job['zip_name'] ?? 'seo-campaign-hub-full.zip' );
+		if ( $path === '' || ! is_readable( $path ) ) {
+			wp_die( esc_html__( 'Backup file missing.', 'seo-campaign-hub' ), 404 );
+		}
+
+		nocache_headers();
+		header( 'Content-Type: application/zip' );
+		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $name ) . '"' );
+		header( 'Content-Length: ' . (string) filesize( $path ) );
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
+		readfile( $path );
+
+		// One-time style cleanup after send.
+		wp_delete_file( $path );
+		$job['download_token'] = '';
+		$job['zip_path']       = '';
+		$job['message']        = __( 'Backup downloaded.', 'seo-campaign-hub' );
+		$this->save_job( $job );
+		exit;
 	}
 
 	/**

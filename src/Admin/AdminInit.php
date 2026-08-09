@@ -66,6 +66,7 @@ class AdminInit {
         add_action( 'admin_post_sch_cloud_backup_schedule', [ $this, 'handle_cloud_backup_schedule' ] );
         add_action( 'wp_ajax_sch_full_site_backup_start', [ $this, 'ajax_full_site_backup_start' ] );
         add_action( 'wp_ajax_sch_full_site_backup_tick', [ $this, 'ajax_full_site_backup_tick' ] );
+        add_action( 'admin_post_sch_full_site_backup_download', [ $this, 'handle_full_site_backup_download' ] );
         add_action( 'admin_post_sch_google_disconnect', [ $this, 'handle_google_disconnect' ] );
         add_action( 'admin_init', [ $this, 'maybe_handle_google_oauth_callback' ] );
 
@@ -1220,7 +1221,8 @@ class AdminInit {
         }
         check_ajax_referer( 'sch_full_site_backup', 'nonce' );
 
-        $result = $this->container->get( 'full_site_backup' )->start_job();
+        $destination = isset( $_POST['destination'] ) ? sanitize_key( wp_unslash( $_POST['destination'] ) ) : 'drive';
+        $result      = $this->container->get( 'full_site_backup' )->start_job( $destination );
         if ( empty( $result['success'] ) ) {
             wp_send_json_error( $result );
         }
@@ -1243,6 +1245,21 @@ class AdminInit {
             wp_send_json_error( $result );
         }
         wp_send_json_success( $result );
+    }
+
+    /**
+     * Stream completed full-site ZIP download.
+     *
+     * @return void
+     */
+    public function handle_full_site_backup_download(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
+        }
+        check_admin_referer( 'sch_full_site_backup_download' );
+
+        $token = isset( $_GET['token'] ) ? sanitize_text_field( wp_unslash( $_GET['token'] ) ) : '';
+        $this->container->get( 'full_site_backup' )->serve_download( $token );
     }
 
     /**

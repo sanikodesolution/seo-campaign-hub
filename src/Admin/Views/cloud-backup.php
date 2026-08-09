@@ -131,9 +131,12 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 				<h2><?php esc_html_e( 'Backup now', 'seo-campaign-hub' ); ?></h2>
 
 				<h3><?php esc_html_e( 'Full WordPress site', 'seo-campaign-hub' ); ?></h3>
-				<p><?php esc_html_e( 'Database + wp-content (themes, plugins, uploads) → Google Drive. Can replace WPvivid for Drive backups. Keep this tab open until it finishes.', 'seo-campaign-hub' ); ?></p>
+				<p><?php esc_html_e( 'Database + wp-content (themes, plugins, uploads). No Google account needed for Download ZIP.', 'seo-campaign-hub' ); ?></p>
 				<p>
-					<button type="button" class="button button-primary" id="sch-full-site-backup" <?php disabled( ! $connected ); ?>>
+					<button type="button" class="button button-primary" id="sch-full-site-download" data-sch-backup-destination="download">
+						<?php esc_html_e( 'Download full site ZIP', 'seo-campaign-hub' ); ?>
+					</button>
+					<button type="button" class="button" id="sch-full-site-backup" data-sch-backup-destination="drive" data-sch-drive-required="<?php echo $connected ? '0' : '1'; ?>" <?php disabled( ! $connected ); ?>>
 						<?php esc_html_e( 'Backup full site to Google Drive', 'seo-campaign-hub' ); ?>
 					</button>
 				</p>

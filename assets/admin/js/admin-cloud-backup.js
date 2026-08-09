@@ -67,8 +67,8 @@
 	});
 
 	var cfg = window.schCloudBackup || null;
-	var btn = document.getElementById('sch-full-site-backup');
-	if (!cfg || !btn) {
+	var buttons = document.querySelectorAll('[data-sch-backup-destination]');
+	if (!cfg || !buttons.length) {
 		return;
 	}
 
@@ -89,10 +89,30 @@
 		}
 	}
 
-	function post(action) {
+	function setButtonsDisabled(disabled) {
+		buttons.forEach(function (b) {
+			if (disabled) {
+				b.disabled = true;
+				return;
+			}
+			if (
+				b.getAttribute('data-sch-backup-destination') === 'drive' &&
+				b.getAttribute('data-sch-drive-required') === '1'
+			) {
+				b.disabled = true;
+				return;
+			}
+			b.disabled = false;
+		});
+	}
+
+	function post(action, destination) {
 		var body = new FormData();
 		body.append('action', action);
 		body.append('nonce', cfg.nonce);
+		if (destination) {
+			body.append('destination', destination);
+		}
 		return fetch(cfg.ajaxUrl, {
 			method: 'POST',
 			credentials: 'same-origin',
@@ -102,7 +122,7 @@
 		});
 	}
 
-	function tickLoop() {
+	function tickLoop(activeBtn) {
 		return post('sch_full_site_backup_tick').then(function (json) {
 			var data = (json && json.data) || {};
 			var percent = data.percent || 0;
@@ -112,51 +132,59 @@
 			if (json && json.success && data.done) {
 				setProgress(100, message || (cfg.i18n && cfg.i18n.done) || 'Done');
 				busy = false;
-				btn.disabled = false;
+				setButtonsDisabled(false);
+				if (data.download_url) {
+					window.location.href = data.download_url;
+				}
 				return;
 			}
 
 			if (!json || !json.success) {
 				setProgress(percent, message || (cfg.i18n && cfg.i18n.failed) || 'Failed');
 				busy = false;
-				btn.disabled = false;
+				setButtonsDisabled(false);
 				return;
 			}
 
 			return new Promise(function (resolve) {
 				window.setTimeout(resolve, 250);
-			}).then(tickLoop);
+			}).then(function () {
+				return tickLoop(activeBtn);
+			});
 		}).catch(function () {
 			setProgress(0, (cfg.i18n && cfg.i18n.failed) || 'Failed');
 			busy = false;
-			btn.disabled = false;
+			setButtonsDisabled(false);
 		});
 	}
 
-	btn.addEventListener('click', function () {
-		if (busy) {
-			return;
-		}
-		busy = true;
-		btn.disabled = true;
-		setProgress(1, (cfg.i18n && cfg.i18n.starting) || 'Starting…');
+	buttons.forEach(function (btn) {
+		btn.addEventListener('click', function () {
+			if (busy) {
+				return;
+			}
+			var destination = btn.getAttribute('data-sch-backup-destination') || 'drive';
+			busy = true;
+			setButtonsDisabled(true);
+			setProgress(1, (cfg.i18n && cfg.i18n.starting) || 'Starting…');
 
-		post('sch_full_site_backup_start')
-			.then(function (json) {
-				var data = (json && json.data) || {};
-				if (!json || !json.success) {
-					setProgress(0, (data && data.message) || (cfg.i18n && cfg.i18n.failed) || 'Failed');
+			post('sch_full_site_backup_start', destination)
+				.then(function (json) {
+					var data = (json && json.data) || {};
+					if (!json || !json.success) {
+						setProgress(0, (data && data.message) || (cfg.i18n && cfg.i18n.failed) || 'Failed');
+						busy = false;
+						setButtonsDisabled(false);
+						return null;
+					}
+					setProgress(data.percent || 1, data.message || '');
+					return tickLoop(btn);
+				})
+				.catch(function () {
+					setProgress(0, (cfg.i18n && cfg.i18n.failed) || 'Failed');
 					busy = false;
-					btn.disabled = false;
-					return null;
-				}
-				setProgress(data.percent || 1, data.message || '');
-				return tickLoop();
-			})
-			.catch(function () {
-				setProgress(0, (cfg.i18n && cfg.i18n.failed) || 'Failed');
-				busy = false;
-				btn.disabled = false;
-			});
+					setButtonsDisabled(false);
+				});
+		});
 	});
 })();

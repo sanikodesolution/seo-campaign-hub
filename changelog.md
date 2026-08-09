@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.17 - 2026-08-09
+- **Cloud Backup**: Download full site ZIP to your computer (no Google account required)
+- Drive upload remains available when connected
+
 ## 1.1.16 - 2026-08-09
 - **Cloud Backup Phase 2**: Full WordPress site backup (database + `wp-content`) to Google Drive
 - Chunked AJAX progress UI; resumable Drive uploads; `full/` folder + retention
