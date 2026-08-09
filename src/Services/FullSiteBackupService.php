@@ -276,9 +276,14 @@ class FullSiteBackupService {
 		];
 
 		if ( ( $job['status'] ?? '' ) === 'done' && ( $job['destination'] ?? '' ) === 'download' && ! empty( $job['download_token'] ) ) {
-			$out['download_url'] = wp_nonce_url(
-				admin_url( 'admin-post.php?action=sch_full_site_backup_download&token=' . rawurlencode( (string) $job['download_token'] ) ),
-				'sch_full_site_backup_download'
+			// Do not use wp_nonce_url() here — it HTML-escapes & to &amp; and breaks browser downloads.
+			$out['download_url'] = add_query_arg(
+				[
+					'action'   => 'sch_full_site_backup_download',
+					'token'    => (string) $job['download_token'],
+					'_wpnonce' => wp_create_nonce( 'sch_full_site_backup_download' ),
+				],
+				admin_url( 'admin-post.php' )
 			);
 		}
 
@@ -361,13 +366,24 @@ class FullSiteBackupService {
 	}
 
 	/**
+	 * Collect only WordPress content roots (plugins/themes/uploads/etc).
+	 *
 	 * @param array<string, mixed> $job Job.
 	 * @return array<string, mixed>
 	 */
 	private function phase_collect( array $job ): array {
-		$root  = WP_CONTENT_DIR;
 		$files = [];
-		$skip  = [
+
+		// Only these wp-content children — never whole server / html / subdomain trees.
+		$allowed_roots = [
+			'plugins',
+			'themes',
+			'mu-plugins',
+			'uploads',
+			'languages',
+		];
+
+		$skip_substrings = [
 			'/cache/',
 			'/upgrade/',
 			'/updraft/',
@@ -376,38 +392,68 @@ class FullSiteBackupService {
 			'/wpvividbackups/',
 			'/wpvivid_uploaded_backup/',
 			'/seo-campaign-hub/uploads/temp/',
+			'/uploads/temp/full-',
 			'/debug.log',
+			// Non-WordPress / static / template / multi-site clutter if present under wp-content.
+			'/html/',
+			'/eggxi-html/',
+			'/php-template/',
+			'/php-templates/',
+			'/php_template/',
+			'/subdomains/',
+			'/subdomain/',
+			'/static-html/',
+			'/landing-html/',
+			'/node_modules/',
+			'/.git/',
+			'/.svn/',
 		];
 
-		$iterator = new \RecursiveIteratorIterator(
-			new \RecursiveDirectoryIterator( $root, \FilesystemIterator::SKIP_DOTS )
-		);
+		$content_root = wp_normalize_path( WP_CONTENT_DIR );
 
-		foreach ( $iterator as $file ) {
-			/** @var \SplFileInfo $file */
-			if ( ! $file->isFile() ) {
+		foreach ( $allowed_roots as $dir_name ) {
+			$dir = trailingslashit( $content_root ) . $dir_name;
+			if ( ! is_dir( $dir ) ) {
 				continue;
 			}
-			$path = $file->getPathname();
-			$norm = str_replace( '\\', '/', $path );
-			$skip_it = false;
-			foreach ( $skip as $needle ) {
-				if ( false !== stripos( $norm, $needle ) ) {
-					$skip_it = true;
-					break;
+
+			$iterator = new \RecursiveIteratorIterator(
+				new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS )
+			);
+
+			foreach ( $iterator as $file ) {
+				/** @var \SplFileInfo $file */
+				if ( ! $file->isFile() ) {
+					continue;
 				}
+
+				$path = wp_normalize_path( $file->getPathname() );
+				$norm = strtolower( str_replace( '\\', '/', $path ) );
+
+				$skip_it = false;
+				foreach ( $skip_substrings as $needle ) {
+					if ( false !== strpos( $norm, strtolower( $needle ) ) ) {
+						$skip_it = true;
+						break;
+					}
+				}
+				if ( $skip_it ) {
+					continue;
+				}
+
+				// Must stay under this allowed root.
+				if ( 0 !== strpos( $path, wp_normalize_path( $dir ) ) ) {
+					continue;
+				}
+
+				$rel_from_content = ltrim( substr( $path, strlen( $content_root ) ), '/\\' );
+				$rel              = 'wp-content/' . str_replace( '\\', '/', $rel_from_content );
+
+				$files[] = [
+					'abs' => $path,
+					'rel' => $rel,
+				];
 			}
-			if ( $skip_it ) {
-				continue;
-			}
-			if ( false !== strpos( $norm, '/uploads/temp/full-' ) ) {
-				continue;
-			}
-			$rel = 'wp-content/' . ltrim( str_replace( '\\', '/', substr( $path, strlen( $root ) ) ), '/' );
-			$files[] = [
-				'abs' => $path,
-				'rel' => $rel,
-			];
 		}
 
 		$manifest = (string) $job['files_manifest'];
@@ -419,7 +465,7 @@ class FullSiteBackupService {
 		$job['phase']      = 'zip';
 		$job['message']    = sprintf(
 			/* translators: %d: file count */
-			__( 'Zipping %d files…', 'seo-campaign-hub' ),
+			__( 'Zipping WordPress files… %d', 'seo-campaign-hub' ),
 			count( $files )
 		);
 		$job['percent'] = 35;

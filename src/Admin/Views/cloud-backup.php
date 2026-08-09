@@ -131,7 +131,7 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 				<h2><?php esc_html_e( 'Backup now', 'seo-campaign-hub' ); ?></h2>
 
 				<h3><?php esc_html_e( 'Full WordPress site', 'seo-campaign-hub' ); ?></h3>
-				<p><?php esc_html_e( 'Database + wp-content (themes, plugins, uploads). No Google account needed for Download ZIP.', 'seo-campaign-hub' ); ?></p>
+				<p><?php esc_html_e( 'WordPress only: database + plugins, themes, uploads, mu-plugins, languages. Does not include html/, php-template/, or other subdomain/static folders.', 'seo-campaign-hub' ); ?></p>
 				<p>
 					<button type="button" class="button button-primary" id="sch-full-site-download" data-sch-backup-destination="download">
 						<?php esc_html_e( 'Download full site ZIP', 'seo-campaign-hub' ); ?>

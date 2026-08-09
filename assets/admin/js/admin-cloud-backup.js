@@ -134,7 +134,8 @@
 				busy = false;
 				setButtonsDisabled(false);
 				if (data.download_url) {
-					window.location.href = data.download_url;
+					var dl = String(data.download_url).replace(/&amp;/g, '&');
+					window.location.href = dl;
 				}
 				return;
 			}

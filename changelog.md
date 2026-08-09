@@ -1,5 +1,12 @@
 # Changelog
 
+## 1.1.19 - 2026-08-09
+- Full site backup now includes **WordPress only**: DB + `plugins`, `themes`, `uploads`, `mu-plugins`, `languages`
+- Excludes `html/`, `php-template/`, caches, and other non-WP / subdomain-style folders
+
+## 1.1.18 - 2026-08-09
+- Fix full-site ZIP download “link expired” (HTML-escaped `&amp;` broke the nonce URL)
+
 ## 1.1.17 - 2026-08-09
 - **Cloud Backup**: Download full site ZIP to your computer (no Google account required)
 - Drive upload remains available when connected

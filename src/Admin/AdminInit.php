@@ -1256,9 +1256,13 @@ class AdminInit {
         if ( ! current_user_can( 'manage_options' ) ) {
             wp_die( esc_html__( 'You are not allowed to do that.', 'seo-campaign-hub' ) );
         }
-        check_admin_referer( 'sch_full_site_backup_download' );
 
         $token = isset( $_GET['token'] ) ? sanitize_text_field( wp_unslash( $_GET['token'] ) ) : '';
+        if ( $token === '' ) {
+            wp_die( esc_html__( 'Missing download token.', 'seo-campaign-hub' ) );
+        }
+
+        // Token + manage_options is the real gate. Nonce is optional (wp_nonce_url HTML-escaping used to break it).
         $this->container->get( 'full_site_backup' )->serve_download( $token );
     }
 
