@@ -104,6 +104,14 @@ class CloudBackupService {
 		if ( empty( $settings['schedule_enabled'] ) || '1' !== (string) $settings['schedule_enabled'] ) {
 			return;
 		}
+
+		$type = (string) ( $settings['schedule_type'] ?? 'plugin' );
+		if ( 'full' === $type ) {
+			$full = new FullSiteBackupService( $this->drive );
+			$full->run_blocking();
+			return;
+		}
+
 		$this->run_plugin_backup();
 	}
 

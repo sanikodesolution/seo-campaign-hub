@@ -222,6 +222,12 @@ final class Plugin {
             );
         } );
 
+        $this->container->singleton( 'full_site_backup', function () {
+            return new \SEO_Campaign_Hub\Services\FullSiteBackupService(
+                $this->container->get( 'google_drive' )
+            );
+        } );
+
         $this->container->singleton( 'backup_scheduler', function () {
             return new \SEO_Campaign_Hub\Services\BackupSchedulerService(
                 $this->container->get( 'google_drive' )

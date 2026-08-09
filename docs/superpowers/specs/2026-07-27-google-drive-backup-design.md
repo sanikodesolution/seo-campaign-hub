@@ -20,11 +20,11 @@ WPvivid-style cloud backup inside SEO Campaign Hub: connect Google Drive, backup
 - Last backup status on admin page
 - Services: `GoogleDriveService`, `CloudBackupService`, `BackupSchedulerService`
 
-### Phase 2 (later)
+### Phase 2 (shipped in 1.1.16)
 
-- Full site backup: database dump + `wp-content` zip, chunked upload
-- Optional separate schedules for DB vs files
-- Download from Drive; restore flows
+- Full site backup: database dump + `wp-content` zip, chunked AJAX + resumable upload
+- Drive folder `full/`; schedule type full vs plugin
+- Restore wizard still later
 
 ## Security
 

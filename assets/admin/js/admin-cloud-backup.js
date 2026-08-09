@@ -1,5 +1,5 @@
 /**
- * Google Drive Sync popup for Cloud Backup.
+ * Google Drive Sync popup + full site backup progress for Cloud Backup.
  *
  * @package SEO_Campaign_Hub
  */
@@ -64,5 +64,99 @@
 		}
 
 		popup.focus();
+	});
+
+	var cfg = window.schCloudBackup || null;
+	var btn = document.getElementById('sch-full-site-backup');
+	if (!cfg || !btn) {
+		return;
+	}
+
+	var progress = document.getElementById('sch-full-backup-progress');
+	var bar = document.getElementById('sch-full-backup-bar');
+	var statusEl = document.getElementById('sch-full-backup-status');
+	var busy = false;
+
+	function setProgress(percent, message) {
+		if (progress) {
+			progress.hidden = false;
+		}
+		if (bar) {
+			bar.style.width = Math.max(0, Math.min(100, percent || 0)) + '%';
+		}
+		if (statusEl) {
+			statusEl.textContent = message || '';
+		}
+	}
+
+	function post(action) {
+		var body = new FormData();
+		body.append('action', action);
+		body.append('nonce', cfg.nonce);
+		return fetch(cfg.ajaxUrl, {
+			method: 'POST',
+			credentials: 'same-origin',
+			body: body
+		}).then(function (res) {
+			return res.json();
+		});
+	}
+
+	function tickLoop() {
+		return post('sch_full_site_backup_tick').then(function (json) {
+			var data = (json && json.data) || {};
+			var percent = data.percent || 0;
+			var message = data.message || '';
+			setProgress(percent, message);
+
+			if (json && json.success && data.done) {
+				setProgress(100, message || (cfg.i18n && cfg.i18n.done) || 'Done');
+				busy = false;
+				btn.disabled = false;
+				return;
+			}
+
+			if (!json || !json.success) {
+				setProgress(percent, message || (cfg.i18n && cfg.i18n.failed) || 'Failed');
+				busy = false;
+				btn.disabled = false;
+				return;
+			}
+
+			return new Promise(function (resolve) {
+				window.setTimeout(resolve, 250);
+			}).then(tickLoop);
+		}).catch(function () {
+			setProgress(0, (cfg.i18n && cfg.i18n.failed) || 'Failed');
+			busy = false;
+			btn.disabled = false;
+		});
+	}
+
+	btn.addEventListener('click', function () {
+		if (busy) {
+			return;
+		}
+		busy = true;
+		btn.disabled = true;
+		setProgress(1, (cfg.i18n && cfg.i18n.starting) || 'Starting…');
+
+		post('sch_full_site_backup_start')
+			.then(function (json) {
+				var data = (json && json.data) || {};
+				if (!json || !json.success) {
+					setProgress(0, (data && data.message) || (cfg.i18n && cfg.i18n.failed) || 'Failed');
+					busy = false;
+					btn.disabled = false;
+					return null;
+				}
+				setProgress(data.percent || 1, data.message || '');
+				return tickLoop();
+			})
+			.catch(function () {
+				setProgress(0, (cfg.i18n && cfg.i18n.failed) || 'Failed');
+				busy = false;
+				btn.disabled = false;
+			});
 	});
 })();

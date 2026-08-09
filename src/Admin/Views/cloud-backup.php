@@ -43,7 +43,7 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 	<?php endif; ?>
 
 	<p class="description">
-		<?php esc_html_e( 'Phase 1: plugin data (campaigns, offers, short links, settings). Full WordPress site backup will be added in a later update.', 'seo-campaign-hub' ); ?>
+		<?php esc_html_e( 'Full WordPress site backup (database + wp-content) and plugin JSON backups to Google Drive. Connect Drive below, then run Backup now.', 'seo-campaign-hub' ); ?>
 	</p>
 
 	<div class="seo-campaign-hub-admin">
@@ -129,12 +129,30 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 
 			<section class="sch-ie-panel" style="margin-bottom:24px">
 				<h2><?php esc_html_e( 'Backup now', 'seo-campaign-hub' ); ?></h2>
-				<p><?php esc_html_e( 'Creates a JSON backup of plugin data and uploads it to Google Drive.', 'seo-campaign-hub' ); ?></p>
+
+				<h3><?php esc_html_e( 'Full WordPress site', 'seo-campaign-hub' ); ?></h3>
+				<p><?php esc_html_e( 'Database + wp-content (themes, plugins, uploads) → Google Drive. Can replace WPvivid for Drive backups. Keep this tab open until it finishes.', 'seo-campaign-hub' ); ?></p>
+				<p>
+					<button type="button" class="button button-primary" id="sch-full-site-backup" <?php disabled( ! $connected ); ?>>
+						<?php esc_html_e( 'Backup full site to Google Drive', 'seo-campaign-hub' ); ?>
+					</button>
+				</p>
+				<div id="sch-full-backup-progress" hidden style="margin:12px 0;max-width:480px">
+					<div style="background:#dcdcde;border-radius:4px;overflow:hidden;height:12px">
+						<div id="sch-full-backup-bar" style="height:12px;width:0%;background:#2271b1;transition:width .2s"></div>
+					</div>
+					<p id="sch-full-backup-status" class="description" style="margin-top:8px"></p>
+				</div>
+
+				<hr style="margin:20px 0" />
+
+				<h3><?php esc_html_e( 'Plugin data only', 'seo-campaign-hub' ); ?></h3>
+				<p><?php esc_html_e( 'Creates a JSON backup of SEO Campaign Hub data and uploads it to Google Drive.', 'seo-campaign-hub' ); ?></p>
 
 				<form method="post" action="<?php echo esc_url( admin_url( 'admin-post.php' ) ); ?>">
 					<input type="hidden" name="action" value="sch_cloud_backup_now">
 					<?php wp_nonce_field( 'sch_cloud_backup_now' ); ?>
-					<?php submit_button( __( 'Backup plugin data to Google Drive', 'seo-campaign-hub' ), 'primary', 'submit', false ); ?>
+					<?php submit_button( __( 'Backup plugin data to Google Drive', 'seo-campaign-hub' ), 'secondary', 'submit', false ); ?>
 				</form>
 
 				<?php if ( ! empty( $status['time'] ) ) : ?>
@@ -165,8 +183,18 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 								<label>
 									<input type="checkbox" name="schedule_enabled" value="1"
 										<?php checked( (string) ( $settings['schedule_enabled'] ?? '0' ), '1' ); ?> />
-									<?php esc_html_e( 'Run automatic plugin backups', 'seo-campaign-hub' ); ?>
+									<?php esc_html_e( 'Run automatic backups', 'seo-campaign-hub' ); ?>
 								</label>
+							</td>
+						</tr>
+						<tr>
+							<th scope="row"><label for="sch-schedule-type"><?php esc_html_e( 'Backup type', 'seo-campaign-hub' ); ?></label></th>
+							<td>
+								<select id="sch-schedule-type" name="schedule_type">
+									<option value="full" <?php selected( (string) ( $settings['schedule_type'] ?? '' ), 'full' ); ?>><?php esc_html_e( 'Full WordPress site', 'seo-campaign-hub' ); ?></option>
+									<option value="plugin" <?php selected( (string) ( $settings['schedule_type'] ?? 'plugin' ), 'plugin' ); ?>><?php esc_html_e( 'Plugin data only (JSON)', 'seo-campaign-hub' ); ?></option>
+								</select>
+								<p class="description"><?php esc_html_e( 'Full site scheduled backups need enough PHP time/memory on your host.', 'seo-campaign-hub' ); ?></p>
 							</td>
 						</tr>
 						<tr>

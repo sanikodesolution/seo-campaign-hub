@@ -242,12 +242,36 @@ class GoogleDriveService {
 	 * @return string|null Plugin folder ID.
 	 */
 	public function get_plugin_backup_folder_id(): ?string {
+		return $this->get_backup_leaf_folder_id( 'plugin' );
+	}
+
+	/**
+	 * Resolve folder ID for full-site backups (parent / site / full).
+	 *
+	 * @return string|null Full backup folder ID.
+	 */
+	public function get_full_backup_folder_id(): ?string {
+		return $this->get_backup_leaf_folder_id( 'full' );
+	}
+
+	/**
+	 * Resolve parent/site/{leaf} folder on Drive.
+	 *
+	 * @param string $leaf Leaf folder name (plugin|full).
+	 * @return string|null
+	 */
+	public function get_backup_leaf_folder_id( string $leaf ): ?string {
+		$leaf = sanitize_key( $leaf );
+		if ( $leaf === '' ) {
+			$leaf = 'plugin';
+		}
+
 		$access = $this->get_valid_access_token();
 		if ( ! $access ) {
 			return null;
 		}
 
-		$settings = $this->get_settings();
+		$settings    = $this->get_settings();
 		$parent_name = $this->sanitize_folder_name( (string) ( $settings['parent_folder'] ?? 'seo-campaign-hub-backups' ) );
 		$site_name   = $this->sanitize_folder_name( (string) ( $settings['subfolder'] ?? $this->default_site_folder_name() ) );
 
@@ -273,36 +297,42 @@ class GoogleDriveService {
 			$site_id = $this->find_or_create_folder( $access, $site_name, $parent_id );
 		}
 
-		$plugin_id = $cached['plugin'] ?? null;
-		if ( $plugin_id && ! $this->folder_exists( $access, $plugin_id ) ) {
-			$plugin_id = null;
+		$leaf_id = $cached[ $leaf ] ?? null;
+		if ( $leaf_id && ! $this->folder_exists( $access, $leaf_id ) ) {
+			$leaf_id = null;
 		}
 		if ( ! $site_id ) {
 			return null;
 		}
-		if ( ! $plugin_id ) {
-			$plugin_id = $this->find_or_create_folder( $access, 'plugin', $site_id );
+		if ( ! $leaf_id ) {
+			$leaf_id = $this->find_or_create_folder( $access, $leaf, $site_id );
 		}
 
-		$tokens['folder_ids'] = [
-			'parent' => $parent_id,
-			'site'   => $site_id,
-			'plugin' => $plugin_id,
-		];
+		$cached['parent'] = $parent_id;
+		$cached['site']   = $site_id;
+		$cached[ $leaf ]  = $leaf_id;
+		$tokens['folder_ids'] = $cached;
 		$this->save_tokens( $tokens );
 
-		return $plugin_id ?: null;
+		return $leaf_id ?: null;
 	}
 
 	/**
-	 * Upload a local file to a Drive folder.
+	 * Upload a local file to a Drive folder (small files via multipart).
 	 *
 	 * @param string $local_path   Absolute path.
 	 * @param string $drive_name   File name on Drive.
 	 * @param string $parent_id    Folder ID.
+	 * @param string $mime_type    MIME type.
 	 * @return array{success:bool,message:string,file_id?:string}
 	 */
-	public function upload_file( string $local_path, string $drive_name, string $parent_id ): array {
+	public function upload_file( string $local_path, string $drive_name, string $parent_id, string $mime_type = 'application/json' ): array {
+		$size = is_readable( $local_path ) ? (int) filesize( $local_path ) : 0;
+		// Prefer resumable for anything over ~4MB.
+		if ( $size > 4 * 1024 * 1024 ) {
+			return $this->upload_file_resumable( $local_path, $drive_name, $parent_id, $mime_type );
+		}
+
 		$access = $this->get_valid_access_token();
 		if ( ! $access ) {
 			return [ 'success' => false, 'message' => __( 'Google Drive is not connected.', 'seo-campaign-hub' ) ];
@@ -329,7 +359,7 @@ class GoogleDriveService {
 		$body    .= "Content-Type: application/json; charset=UTF-8\r\n\r\n";
 		$body    .= $metadata . "\r\n";
 		$body    .= "--{$boundary}\r\n";
-		$body    .= 'Content-Type: application/json; charset=UTF-8\r\n\r\n';
+		$body    .= 'Content-Type: ' . $mime_type . "\r\n\r\n";
 		$body    .= $content . "\r\n";
 		$body    .= "--{$boundary}--";
 
@@ -358,6 +388,187 @@ class GoogleDriveService {
 			'success' => true,
 			'message' => __( 'Uploaded to Google Drive.', 'seo-campaign-hub' ),
 			'file_id' => (string) $decoded['id'],
+		];
+	}
+
+	/**
+	 * Start a resumable upload session.
+	 *
+	 * @param string $drive_name File name.
+	 * @param string $parent_id  Folder ID.
+	 * @param string $mime_type  MIME type.
+	 * @param int    $file_size  Total bytes.
+	 * @return array{success:bool,message:string,session_url?:string}
+	 */
+	public function start_resumable_upload( string $drive_name, string $parent_id, string $mime_type, int $file_size ): array {
+		$access = $this->get_valid_access_token();
+		if ( ! $access ) {
+			return [ 'success' => false, 'message' => __( 'Google Drive is not connected.', 'seo-campaign-hub' ) ];
+		}
+
+		$metadata = wp_json_encode(
+			[
+				'name'    => $drive_name,
+				'parents' => [ $parent_id ],
+			]
+		);
+
+		$response = wp_remote_post(
+			'https://www.googleapis.com/upload/drive/v3/files?uploadType=resumable',
+			[
+				'timeout' => 60,
+				'headers' => [
+					'Authorization'           => 'Bearer ' . $access,
+					'Content-Type'            => 'application/json; charset=UTF-8',
+					'X-Upload-Content-Type'   => $mime_type,
+					'X-Upload-Content-Length' => (string) $file_size,
+				],
+				'body'    => $metadata,
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [ 'success' => false, 'message' => $response->get_error_message() ];
+		}
+
+		$headers = wp_remote_retrieve_headers( $response );
+		$location = '';
+		if ( is_object( $headers ) && method_exists( $headers, 'offsetGet' ) ) {
+			$location = (string) ( $headers['location'] ?? $headers['Location'] ?? '' );
+		} elseif ( is_array( $headers ) ) {
+			$location = (string) ( $headers['location'] ?? $headers['Location'] ?? '' );
+		}
+
+		if ( $location === '' ) {
+			return [ 'success' => false, 'message' => __( 'Could not start Google Drive upload session.', 'seo-campaign-hub' ) ];
+		}
+
+		return [
+			'success'     => true,
+			'message'     => __( 'Upload session started.', 'seo-campaign-hub' ),
+			'session_url' => $location,
+		];
+	}
+
+	/**
+	 * Upload one chunk to an existing resumable session.
+	 *
+	 * @param string $session_url Session URL.
+	 * @param string $chunk       Binary chunk.
+	 * @param int    $offset      Start byte.
+	 * @param int    $total_size  Total file size.
+	 * @return array{success:bool,message:string,done?:bool,file_id?:string,next_offset?:int}
+	 */
+	public function upload_resumable_chunk( string $session_url, string $chunk, int $offset, int $total_size ): array {
+		$access = $this->get_valid_access_token();
+		if ( ! $access ) {
+			return [ 'success' => false, 'message' => __( 'Google Drive is not connected.', 'seo-campaign-hub' ) ];
+		}
+
+		$chunk_size = strlen( $chunk );
+		$end        = $offset + $chunk_size - 1;
+
+		$response = wp_remote_request(
+			$session_url,
+			[
+				'method'  => 'PUT',
+				'timeout' => 120,
+				'headers' => [
+					'Authorization'  => 'Bearer ' . $access,
+					'Content-Length' => (string) $chunk_size,
+					'Content-Range'  => sprintf( 'bytes %d-%d/%d', $offset, $end, $total_size ),
+					'Content-Type'   => 'application/octet-stream',
+				],
+				'body'    => $chunk,
+			]
+		);
+
+		if ( is_wp_error( $response ) ) {
+			return [ 'success' => false, 'message' => $response->get_error_message() ];
+		}
+
+		$code = (int) wp_remote_retrieve_response_code( $response );
+		$body = json_decode( wp_remote_retrieve_body( $response ), true );
+
+		if ( $code === 200 || $code === 201 ) {
+			return [
+				'success' => true,
+				'done'    => true,
+				'message' => __( 'Uploaded to Google Drive.', 'seo-campaign-hub' ),
+				'file_id' => is_array( $body ) && ! empty( $body['id'] ) ? (string) $body['id'] : '',
+			];
+		}
+
+		if ( $code === 308 ) {
+			return [
+				'success'     => true,
+				'done'        => false,
+				'message'     => __( 'Chunk uploaded.', 'seo-campaign-hub' ),
+				'next_offset' => $offset + $chunk_size,
+			];
+		}
+
+		$err = is_array( $body ) && isset( $body['error']['message'] ) ? (string) $body['error']['message'] : __( 'Google Drive upload chunk failed.', 'seo-campaign-hub' );
+		return [ 'success' => false, 'message' => $err ];
+	}
+
+	/**
+	 * Upload entire file via resumable session (blocking).
+	 *
+	 * @param string $local_path Local path.
+	 * @param string $drive_name Drive name.
+	 * @param string $parent_id  Folder ID.
+	 * @param string $mime_type  MIME type.
+	 * @return array{success:bool,message:string,file_id?:string}
+	 */
+	public function upload_file_resumable( string $local_path, string $drive_name, string $parent_id, string $mime_type = 'application/zip' ): array {
+		if ( ! is_readable( $local_path ) ) {
+			return [ 'success' => false, 'message' => __( 'Backup file is not readable.', 'seo-campaign-hub' ) ];
+		}
+
+		$total = (int) filesize( $local_path );
+		$start = $this->start_resumable_upload( $drive_name, $parent_id, $mime_type, $total );
+		if ( empty( $start['success'] ) || empty( $start['session_url'] ) ) {
+			return [ 'success' => false, 'message' => (string) ( $start['message'] ?? __( 'Upload failed.', 'seo-campaign-hub' ) ) ];
+		}
+
+		$session = (string) $start['session_url'];
+		$handle  = fopen( $local_path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		if ( ! $handle ) {
+			return [ 'success' => false, 'message' => __( 'Could not open backup file.', 'seo-campaign-hub' ) ];
+		}
+
+		$chunk_size = 256 * 1024 * 4; // 1MB (multiple of 256KB).
+		$offset     = 0;
+		$file_id    = '';
+
+		while ( $offset < $total ) {
+			$read = fread( $handle, $chunk_size ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread
+			if ( false === $read || $read === '' ) {
+				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+				return [ 'success' => false, 'message' => __( 'Could not read backup chunk.', 'seo-campaign-hub' ) ];
+			}
+
+			$result = $this->upload_resumable_chunk( $session, $read, $offset, $total );
+			if ( empty( $result['success'] ) ) {
+				fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+				return [ 'success' => false, 'message' => (string) ( $result['message'] ?? __( 'Upload failed.', 'seo-campaign-hub' ) ) ];
+			}
+
+			if ( ! empty( $result['done'] ) ) {
+				$file_id = (string) ( $result['file_id'] ?? '' );
+				break;
+			}
+
+			$offset = (int) ( $result['next_offset'] ?? ( $offset + strlen( $read ) ) );
+		}
+
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+
+		return [
+			'success' => true,
+			'message' => __( 'Uploaded to Google Drive.', 'seo-campaign-hub' ),
+			'file_id' => $file_id,
 		];
 	}
 

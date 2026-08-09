@@ -451,21 +451,19 @@ If `/ads.txt` is empty, wrong, or a 404, confirm the feature is enabled and that
 
 ## Cloud Backup (Google Drive)
 
-Back up plugin data to Google Drive (WPvivid-style workflow). **Phase 1** is available now; **Phase 2** (full site: database + `wp-content`) is planned for a later release.
+Back up your full WordPress site and/or plugin data to Google Drive.
 
-### Phase 1 (current)
+### What you can back up
 
-- Connect Google Drive with OAuth (Client ID + Secret password + browser popup Sync)
-- Parent folder + per-site subfolder + `plugin` folder for JSON files
-- Manual **Backup now** and optional schedule (daily / weekly)
-- Retention: keep the newest N plugin backups on Drive; older files are deleted automatically
-- Last backup status shown on the Cloud Backup page
+- **Full site** — database dump + `wp-content` (themes, plugins, uploads) as a ZIP → Drive `…/full/`
+- **Plugin data** — SEO Campaign Hub JSON → Drive `…/plugin/`
+- Chunked AJAX progress for full backups; resumable Google Drive uploads
+- Manual backup + schedule (daily/weekly; choose full or plugin)
+- Retention: keep the newest N backups per folder; older files are deleted automatically
 
-### Phase 2 (planned)
+### Still planned later
 
-- Full WordPress site backup (database dump + `wp-content` archive)
-- Chunked upload, optional separate DB vs files schedules
-- Download from Drive and restore flows
+- Download from Drive and one-click restore flows
 
 ### Connect Google Drive
 
@@ -477,7 +475,7 @@ Back up plugin data to Google Drive (WPvivid-style workflow). **Phase 1** is ava
 6. Set **Parent folder on Drive** and **Site subfolder** (defaults work for most sites; use a unique subfolder per site if one Google account backs up multiple WordPress installs)
 7. Click **Save cloud settings**
 8. Click **Sync with Google Drive** — Google sign-in opens in a **browser popup** (allow popups if nothing appears). Approve access; the popup closes and this page shows **Synced**
-9. When connected, use **Backup plugin data to Google Drive** or configure **Backup schedule**
+9. When connected, use **Backup full site to Google Drive** (or plugin JSON), and optionally configure **Backup schedule**
 
 OAuth uses the `drive.file` scope (files created by this app). Tokens are stored in WordPress options; only administrators (`manage_options`) can manage backups.
 
@@ -488,19 +486,22 @@ OAuth uses the `drive.file` scope (files created by this app). Tokens are stored
 | Parent folder | `seo-campaign-hub-backups` | Top-level folder in your Google Drive |
 | Site subfolder | e.g. `yoursite_com` (from your domain) | Separates backups when one account serves multiple sites |
 | Plugin folder | `plugin` | JSON plugin backups for that site |
+| Full folder | `full` | Full site ZIP backups (database.sql + wp-content) |
 
-**Example path:**
+**Example paths:**
 
 ```text
 seo-campaign-hub-backups / yoursite_com / plugin / seo-campaign-hub-plugin-backup-2026-07-27-143052.json
+seo-campaign-hub-backups / yoursite_com / full / seo-campaign-hub-full-2026-08-09-120000.zip
 ```
 
-Each backup file contains the same **Everything** JSON payload as **Import/Export** (campaigns, offers, short links, settings).
+Plugin JSON files match **Import/Export** “Everything”. Full ZIPs contain `database.sql` plus a `wp-content/` tree.
 
 ### Run and schedule backups
 
-- **Backup now** — **Cloud Backup → Backup plugin data to Google Drive** (requires an active Google connection)
-- **Schedule** — enable **Run automatic plugin backups**, choose **Daily** or **Weekly**, and click **Save schedule**
+- **Full site** — **Cloud Backup → Backup full site to Google Drive** (keep the tab open; progress bar runs until upload finishes)
+- **Plugin JSON** — **Backup plugin data to Google Drive**
+- **Schedule** — enable automatic backups, choose **Full WordPress site** or **Plugin data only**, **Daily** or **Weekly**, then **Save schedule**
 - Schedules use **WordPress cron** (`seo_campaign_hub_cloud_backup_cron`), which runs when your site receives traffic; low-traffic sites may run late unless you use a real server cron or a cron manager plugin
 
 ### Disconnect

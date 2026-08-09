@@ -64,6 +64,8 @@ class AdminInit {
         add_action( 'admin_post_sch_cloud_backup_settings', [ $this, 'handle_cloud_backup_settings' ] );
         add_action( 'admin_post_sch_cloud_backup_now', [ $this, 'handle_cloud_backup_now' ] );
         add_action( 'admin_post_sch_cloud_backup_schedule', [ $this, 'handle_cloud_backup_schedule' ] );
+        add_action( 'wp_ajax_sch_full_site_backup_start', [ $this, 'ajax_full_site_backup_start' ] );
+        add_action( 'wp_ajax_sch_full_site_backup_tick', [ $this, 'ajax_full_site_backup_tick' ] );
         add_action( 'admin_post_sch_google_disconnect', [ $this, 'handle_google_disconnect' ] );
         add_action( 'admin_init', [ $this, 'maybe_handle_google_oauth_callback' ] );
 
@@ -731,6 +733,20 @@ class AdminInit {
             $version,
             true
         );
+
+        wp_localize_script(
+            'seo-campaign-hub-admin-cloud-backup',
+            'schCloudBackup',
+            [
+                'ajaxUrl' => admin_url( 'admin-ajax.php' ),
+                'nonce'   => wp_create_nonce( 'sch_full_site_backup' ),
+                'i18n'    => [
+                    'starting' => __( 'Starting full site backup…', 'seo-campaign-hub' ),
+                    'failed'   => __( 'Full site backup failed.', 'seo-campaign-hub' ),
+                    'done'     => __( 'Full site backup complete.', 'seo-campaign-hub' ),
+                ],
+            ]
+        );
     }
 
     /**
@@ -1184,12 +1200,49 @@ class AdminInit {
             [
                 'schedule_enabled'    => ! empty( $_POST['schedule_enabled'] ) ? '1' : '0',
                 'schedule_frequency'  => $freq,
+                'schedule_type'       => ( isset( $_POST['schedule_type'] ) && 'full' === sanitize_key( wp_unslash( $_POST['schedule_type'] ) ) ) ? 'full' : 'plugin',
             ]
         );
 
         $this->container->get( 'backup_scheduler' )->reschedule();
 
         $this->redirect_to_cloud_backup( [ 'sch_notice' => 'saved' ] );
+    }
+
+    /**
+     * AJAX: start full site backup job.
+     *
+     * @return void
+     */
+    public function ajax_full_site_backup_start(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => __( 'Permission denied.', 'seo-campaign-hub' ) ], 403 );
+        }
+        check_ajax_referer( 'sch_full_site_backup', 'nonce' );
+
+        $result = $this->container->get( 'full_site_backup' )->start_job();
+        if ( empty( $result['success'] ) ) {
+            wp_send_json_error( $result );
+        }
+        wp_send_json_success( $result );
+    }
+
+    /**
+     * AJAX: advance full site backup job.
+     *
+     * @return void
+     */
+    public function ajax_full_site_backup_tick(): void {
+        if ( ! current_user_can( 'manage_options' ) ) {
+            wp_send_json_error( [ 'message' => __( 'Permission denied.', 'seo-campaign-hub' ) ], 403 );
+        }
+        check_ajax_referer( 'sch_full_site_backup', 'nonce' );
+
+        $result = $this->container->get( 'full_site_backup' )->tick();
+        if ( empty( $result['success'] ) && ! empty( $result['done'] ) ) {
+            wp_send_json_error( $result );
+        }
+        wp_send_json_success( $result );
     }
 
     /**

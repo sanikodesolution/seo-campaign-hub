@@ -1,5 +1,11 @@
 # Changelog
 
+## 1.1.16 - 2026-08-09
+- **Cloud Backup Phase 2**: Full WordPress site backup (database + `wp-content`) to Google Drive
+- Chunked AJAX progress UI; resumable Drive uploads; `full/` folder + retention
+- Schedule can run full site or plugin JSON
+- Design: `docs/superpowers/specs/2026-08-09-full-site-drive-backup-design.md`
+
 ## 1.1.15 - 2026-08-09
 - **URL Replace**: live find→replace rules for any URL on the public site (change anytime)
 - Optional serialized/JSON-safe database replace (posts, meta, options, comments, short links) with dry run
