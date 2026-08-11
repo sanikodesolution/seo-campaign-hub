@@ -239,6 +239,26 @@ $base_url = admin_url( 'admin.php?page=seo-campaign-hub-analytics' );
 				<?php endforeach; ?>
 			</div>
 
+			<?php
+			$at = ( isset( $all_time ) && is_array( $all_time ) ) ? $all_time : [];
+			if ( ! empty( $at ) ) :
+			?>
+			<div class="seo-campaign-hub-dashboard-grid" style="margin-bottom:20px">
+				<div class="seo-campaign-hub-stat-box" style="background:#f0f6fc">
+					<div class="stat-number" style="color:#2271b1"><?php echo esc_html( number_format_i18n( (int) ( $at['all_visitors'] ?? 0 ) ) ); ?></div>
+					<div class="stat-label"><?php esc_html_e( 'Total Visitors (All Time)', 'seo-campaign-hub' ); ?></div>
+				</div>
+				<div class="seo-campaign-hub-stat-box" style="background:#f0f6fc">
+					<div class="stat-number" style="color:#2271b1"><?php echo esc_html( number_format_i18n( (int) ( $at['all_views'] ?? 0 ) ) ); ?></div>
+					<div class="stat-label"><?php esc_html_e( 'Total Page Views (All Time)', 'seo-campaign-hub' ); ?></div>
+				</div>
+				<div class="seo-campaign-hub-stat-box">
+					<div class="stat-number"><?php echo esc_html( number_format_i18n( (int) ( $at['today_visitors'] ?? 0 ) ) ); ?></div>
+					<div class="stat-label"><?php esc_html_e( 'Today Visitors', 'seo-campaign-hub' ); ?></div>
+				</div>
+			</div>
+			<?php endif; ?>
+
 			<?php if ( $total_events === 0 ) : ?>
 				<div class="seo-campaign-hub-placeholder">
 					<p><?php esc_html_e( 'No analytics events yet for this period.', 'seo-campaign-hub' ); ?></p>

@@ -333,7 +333,18 @@ class AdminInit {
 
     /** @return void */
     public function render_dashboard(): void {
-        $this->render_view( 'dashboard', [ 'page_title' => __( 'Dashboard', 'seo-campaign-hub' ) ] );
+        $visitor_stats = [];
+        try {
+            $analytics = $this->container->get( 'analytics' );
+            $visitor_stats = $analytics->get_visitor_overview();
+        } catch ( \Throwable $e ) {
+            $visitor_stats = [];
+        }
+
+        $this->render_view( 'dashboard', [
+            'page_title'    => __( 'Dashboard', 'seo-campaign-hub' ),
+            'visitor_stats' => $visitor_stats,
+        ] );
     }
 
     /** @return void */
@@ -374,10 +385,13 @@ class AdminInit {
         $summary['top_offers']    = $this->enrich_top_offers( $summary['top_offers'] ?? [] );
         $summary['top_links']     = $this->enrich_top_links( $summary['top_links'] ?? [] );
 
+        $all_time = $analytics->get_visitor_overview();
+
         $this->render_view( 'analytics', [
             'page_title' => __( 'Analytics', 'seo-campaign-hub' ),
             'days'       => $days,
             'summary'    => $summary,
+            'all_time'   => $all_time,
         ] );
     }
 

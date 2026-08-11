@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.23 - 2026-08-11
+- **Dashboard**: Add Site Visitors widget showing today / 7-day / 30-day / all-time unique visitors and page views
+- **Analytics**: Add all-time totals (visitors + page views) above the period metrics
+
 ## 1.1.22 - 2026-08-09
 - Fix full-site ZIP “Could not create ZIP archive”: write temp files to `wp-content/uploads/sch-backups/`, retry ZipArchive open, clearer errors
 

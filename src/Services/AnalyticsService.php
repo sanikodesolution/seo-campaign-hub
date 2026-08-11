@@ -101,6 +101,55 @@ class AnalyticsService {
     }
 
     /**
+     * Quick visitor overview for the Dashboard widget.
+     *
+     * @return array{enabled:bool,today_visitors:int,today_views:int,week_visitors:int,week_views:int,month_visitors:int,month_views:int,all_visitors:int,all_views:int}
+     */
+    public function get_visitor_overview(): array {
+        if ( ! $this->db->table_exists( 'analytics' ) ) {
+            return [
+                'enabled'        => $this->is_enabled(),
+                'today_visitors' => 0, 'today_views' => 0,
+                'week_visitors'  => 0, 'week_views'  => 0,
+                'month_visitors' => 0, 'month_views' => 0,
+                'all_visitors'   => 0, 'all_views'   => 0,
+            ];
+        }
+
+        global $wpdb;
+        $t     = $wpdb->prefix . 'sch_analytics';
+        $today = gmdate( 'Y-m-d 00:00:00' );
+        $week  = gmdate( 'Y-m-d H:i:s', time() - 7 * DAY_IN_SECONDS );
+        $month = gmdate( 'Y-m-d H:i:s', time() - 30 * DAY_IN_SECONDS );
+
+        $sql = "SELECT
+            COUNT(DISTINCT CASE WHEN created_at >= %s THEN visitor_id END) AS today_visitors,
+            SUM(CASE WHEN created_at >= %s AND event_type IN ('page_view','view') THEN 1 ELSE 0 END) AS today_views,
+            COUNT(DISTINCT CASE WHEN created_at >= %s THEN visitor_id END) AS week_visitors,
+            SUM(CASE WHEN created_at >= %s AND event_type IN ('page_view','view') THEN 1 ELSE 0 END) AS week_views,
+            COUNT(DISTINCT CASE WHEN created_at >= %s THEN visitor_id END) AS month_visitors,
+            SUM(CASE WHEN created_at >= %s AND event_type IN ('page_view','view') THEN 1 ELSE 0 END) AS month_views,
+            COUNT(DISTINCT visitor_id) AS all_visitors,
+            SUM(CASE WHEN event_type IN ('page_view','view') THEN 1 ELSE 0 END) AS all_views
+            FROM {$t}";
+
+        // phpcs:ignore WordPress.DB.PreparedSQL.NotPrepared
+        $row = $wpdb->get_row( $wpdb->prepare( $sql, $today, $today, $week, $week, $month, $month ), ARRAY_A );
+
+        return [
+            'enabled'        => $this->is_enabled(),
+            'today_visitors' => (int) ( $row['today_visitors'] ?? 0 ),
+            'today_views'    => (int) ( $row['today_views'] ?? 0 ),
+            'week_visitors'  => (int) ( $row['week_visitors'] ?? 0 ),
+            'week_views'     => (int) ( $row['week_views'] ?? 0 ),
+            'month_visitors' => (int) ( $row['month_visitors'] ?? 0 ),
+            'month_views'    => (int) ( $row['month_views'] ?? 0 ),
+            'all_visitors'   => (int) ( $row['all_visitors'] ?? 0 ),
+            'all_views'      => (int) ( $row['all_views'] ?? 0 ),
+        ];
+    }
+
+    /**
      * Get session ID
      *
      * @return string
