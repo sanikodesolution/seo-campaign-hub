@@ -14,6 +14,7 @@ Use it to:
 - Generate QR codes for campaigns and links
 - Track clicks, page views, and conversions
 - Add schema markup and SEO meta automatically
+- Set **SEO Title** and **Meta Description** per post/page/campaign/offer, plus homepage defaults
 - Block WordPress core folder listings from Google (`/wp-includes/SimplePie/`)
 - Optimize front-end code (clean WP head, minify HTML, defer JS)
 - Replace any URL site-wide (live rules + database find/replace)
@@ -375,7 +376,10 @@ Open **SEO Campaign Hub → Settings** and review these sections:
 - Schema markup
 - Meta tags
 - Open Graph tags for social sharing
+- **Homepage SEO Title** and **Homepage Meta Description**
+- Per **post / page / campaign / offer**: SEO metabox (title + description). Leave blank to use the WordPress title / excerpt.
 - **Block core directory listings** — stop Google indexing `/wp-includes/SimplePie/` folder listings (`?SD`, `?MD`, “Duplicate without user-selected canonical”). Writes robots.txt Disallow + Apache 403. Leave on unless you use Nginx (then also set `autoindex off`).
+- Do not run another SEO title plugin (Yoast / Rank Math) at the same time.
 
 ### Analytics
 
@@ -681,9 +685,9 @@ Always keep a full WordPress backup before large imports.
 ### SEO landing pages
 
 1. Enable Schema, Meta Tags, and Open Graph in **Settings → SEO**
-2. Publish optimized campaign content
-3. Categorize and tag campaigns for organization
-4. Promote with short links and track rankings / conversions
+2. Set **Homepage SEO Title** and **Homepage Meta Description** (optional)
+3. On each post/page/campaign/offer, fill the **SEO** metabox (title + description)
+4. Publish optimized content, then promote with short links and track rankings / conversions
 
 ### Multi-language / multi-country short link
 
@@ -755,6 +759,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.24 (2026-08-13)
+
+- SEO Title + Meta Description metabox (posts, pages, campaigns, offers) and homepage defaults in Settings → SEO
+- Design: `docs/superpowers/specs/2026-08-13-seo-title-meta-design.md`
 
 ### 1.1.15 (2026-08-09)
 

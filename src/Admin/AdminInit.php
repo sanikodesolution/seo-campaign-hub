@@ -81,6 +81,9 @@ class AdminInit {
 
         add_action( 'add_meta_boxes', [ $this, 'add_web_push_metabox' ] );
         add_action( 'save_post_post', [ $this, 'save_web_push_metabox' ], 10, 2 );
+        add_action( 'add_meta_boxes', [ $this, 'add_seo_metabox' ] );
+        add_action( 'save_post', [ $this, 'save_seo_metabox' ], 10, 2 );
+        add_action( 'admin_enqueue_scripts', [ $this, 'enqueue_seo_metabox_assets' ] );
 
         add_filter( 'post_row_actions', [ $this, 'add_post_share_row_actions' ], 20, 2 );
         add_filter( 'manage_post_posts_columns', [ $this, 'add_post_share_column' ] );
@@ -1804,6 +1807,164 @@ class AdminInit {
             )
         );
         exit;
+    }
+
+    /**
+     * Post types that get the SEO title / description metabox.
+     *
+     * @return array<int, string>
+     */
+    private function seo_metabox_post_types(): array {
+        return [ 'post', 'page', 'sch_campaign', 'sch_offer' ];
+    }
+
+    /**
+     * Register SEO title / description metabox.
+     *
+     * @return void
+     */
+    public function add_seo_metabox(): void {
+        foreach ( $this->seo_metabox_post_types() as $post_type ) {
+            add_meta_box(
+                'sch_seo_meta',
+                __( 'SEO', 'seo-campaign-hub' ),
+                [ $this, 'render_seo_metabox' ],
+                $post_type,
+                'normal',
+                'high'
+            );
+        }
+    }
+
+    /**
+     * @param \WP_Post $post Post.
+     * @return void
+     */
+    public function render_seo_metabox( $post ): void {
+        if ( ! ( $post instanceof \WP_Post ) ) {
+            return;
+        }
+
+        wp_nonce_field( 'sch_seo_metabox', 'sch_seo_metabox_nonce' );
+        $title = (string) get_post_meta( $post->ID, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_TITLE, true );
+        $desc  = (string) get_post_meta( $post->ID, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_DESCRIPTION, true );
+        $title_soft = \SEO_Campaign_Hub\Services\SeoMetaResolver::TITLE_SOFT_LIMIT;
+        $desc_soft  = \SEO_Campaign_Hub\Services\SeoMetaResolver::DESCRIPTION_SOFT_LIMIT;
+        ?>
+        <p class="description">
+            <?php esc_html_e( 'Leave blank to use the post title and excerpt (or homepage SEO defaults on the static front page).', 'seo-campaign-hub' ); ?>
+        </p>
+        <p>
+            <label for="sch_seo_meta_title"><strong><?php esc_html_e( 'SEO Title', 'seo-campaign-hub' ); ?></strong></label><br />
+            <input type="text"
+                   class="large-text"
+                   id="sch_seo_meta_title"
+                   name="sch_seo_meta_title"
+                   value="<?php echo esc_attr( $title ); ?>"
+                   maxlength="<?php echo esc_attr( (string) \SEO_Campaign_Hub\Services\SeoMetaResolver::TITLE_MAX ); ?>" />
+            <span class="sch-seo-count description"
+                  data-sch-seo-count="sch_seo_meta_title"
+                  data-sch-seo-limit="<?php echo esc_attr( (string) $title_soft ); ?>"></span>
+            <br /><span class="description"><?php esc_html_e( 'Recommended: 50–60 characters.', 'seo-campaign-hub' ); ?></span>
+        </p>
+        <p>
+            <label for="sch_seo_meta_description"><strong><?php esc_html_e( 'Meta Description', 'seo-campaign-hub' ); ?></strong></label><br />
+            <textarea class="large-text"
+                      rows="3"
+                      id="sch_seo_meta_description"
+                      name="sch_seo_meta_description"
+                      maxlength="<?php echo esc_attr( (string) \SEO_Campaign_Hub\Services\SeoMetaResolver::DESCRIPTION_MAX ); ?>"><?php echo esc_textarea( $desc ); ?></textarea>
+            <span class="sch-seo-count description"
+                  data-sch-seo-count="sch_seo_meta_description"
+                  data-sch-seo-limit="<?php echo esc_attr( (string) $desc_soft ); ?>"></span>
+            <br /><span class="description"><?php esc_html_e( 'Recommended: 120–160 characters.', 'seo-campaign-hub' ); ?></span>
+        </p>
+        <?php
+    }
+
+    /**
+     * Save SEO metabox fields.
+     *
+     * @param int      $post_id Post ID.
+     * @param \WP_Post $post    Post.
+     * @return void
+     */
+    public function save_seo_metabox( int $post_id, $post ): void {
+        if ( defined( 'DOING_AUTOSAVE' ) && DOING_AUTOSAVE ) {
+            return;
+        }
+        if ( wp_is_post_revision( $post_id ) ) {
+            return;
+        }
+        if ( ! ( $post instanceof \WP_Post ) || ! in_array( $post->post_type, $this->seo_metabox_post_types(), true ) ) {
+            return;
+        }
+        if ( ! isset( $_POST['sch_seo_metabox_nonce'] ) || ! wp_verify_nonce( sanitize_text_field( wp_unslash( $_POST['sch_seo_metabox_nonce'] ) ), 'sch_seo_metabox' ) ) {
+            return;
+        }
+        if ( ! current_user_can( 'edit_post', $post_id ) ) {
+            return;
+        }
+
+        $title = isset( $_POST['sch_seo_meta_title'] )
+            ? sanitize_text_field( wp_unslash( $_POST['sch_seo_meta_title'] ) )
+            : '';
+        $desc = isset( $_POST['sch_seo_meta_description'] )
+            ? sanitize_textarea_field( wp_unslash( $_POST['sch_seo_meta_description'] ) )
+            : '';
+
+        $title = \SEO_Campaign_Hub\Services\SeoMetaResolver::limit_length( $title, \SEO_Campaign_Hub\Services\SeoMetaResolver::TITLE_MAX );
+        $desc  = \SEO_Campaign_Hub\Services\SeoMetaResolver::limit_length( $desc, \SEO_Campaign_Hub\Services\SeoMetaResolver::DESCRIPTION_MAX );
+
+        if ( $title === '' ) {
+            delete_post_meta( $post_id, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_TITLE );
+        } else {
+            update_post_meta( $post_id, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_TITLE, $title );
+        }
+
+        if ( $desc === '' ) {
+            delete_post_meta( $post_id, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_DESCRIPTION );
+        } else {
+            update_post_meta( $post_id, \SEO_Campaign_Hub\Services\SeoMetaResolver::META_DESCRIPTION, $desc );
+        }
+    }
+
+    /**
+     * Enqueue SEO metabox character counter.
+     *
+     * @param string $hook_suffix Admin hook.
+     * @return void
+     */
+    public function enqueue_seo_metabox_assets( string $hook_suffix ): void {
+        if ( ! in_array( $hook_suffix, [ 'post.php', 'post-new.php' ], true ) ) {
+            return;
+        }
+
+        $screen = function_exists( 'get_current_screen' ) ? get_current_screen() : null;
+        $type   = ( $screen && isset( $screen->post_type ) ) ? (string) $screen->post_type : '';
+        if ( ! in_array( $type, $this->seo_metabox_post_types(), true ) ) {
+            return;
+        }
+
+        $version = defined( 'SEO_CAMPAIGN_HUB_VERSION' ) ? SEO_CAMPAIGN_HUB_VERSION : '1.0.0';
+        $url     = defined( 'SEO_CAMPAIGN_HUB_PLUGIN_URL' ) ? SEO_CAMPAIGN_HUB_PLUGIN_URL : '';
+        if ( $url === '' ) {
+            return;
+        }
+
+        wp_enqueue_style(
+            'seo-campaign-hub-admin',
+            $url . 'assets/admin/css/admin.css',
+            [],
+            $version
+        );
+        wp_enqueue_script(
+            'seo-campaign-hub-seo-metabox',
+            $url . 'assets/admin/js/seo-metabox.js',
+            [],
+            $version,
+            true
+        );
     }
 
     /**

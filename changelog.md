@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.24 - 2026-08-13
+- **SEO title & meta**: editor metabox (post, page, campaign, offer) plus Homepage Title / Description in Settings → SEO
+- Front-end document title, meta description, and Open Graph use custom values with WP fallbacks
+- Design: `docs/superpowers/specs/2026-08-13-seo-title-meta-design.md`
+
 ## 1.1.23 - 2026-08-11
 - **Dashboard**: Add Site Visitors widget showing today / 7-day / 30-day / all-time unique visitors and page views
 - **Analytics**: Add all-time totals (visitors + page views) above the period metrics

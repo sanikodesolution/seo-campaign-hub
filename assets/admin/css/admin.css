@@ -644,3 +644,17 @@
 .sch-share-column .sch-share-letter--reddit {
   background: #ff4500;
 }
+
+/* ============================================
+   SEO metabox
+   ============================================ */
+
+.sch-seo-count {
+    display: inline-block;
+    margin-top: 4px;
+}
+
+.sch-seo-count.is-over {
+    color: #b32d2e;
+    font-weight: 600;
+}

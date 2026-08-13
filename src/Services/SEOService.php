@@ -21,9 +21,29 @@ class SEOService {
      * Constructor
      */
     public function __construct() {
-        add_action('wp_head', [$this, 'add_seo_meta_tags']);
-        add_filter('document_title_parts', [$this, 'modify_title_parts']);
-        add_action('seo_campaign_hub_campaign_saved', [$this, 'update_seo_scores']);
+        add_action( 'wp_head', [ $this, 'add_seo_meta_tags' ] );
+        add_action( 'wp_head', [ $this, 'add_open_graph_tags' ], 5 );
+        add_filter( 'pre_get_document_title', [ $this, 'filter_document_title' ], 20 );
+        add_action( 'seo_campaign_hub_campaign_saved', [ $this, 'update_seo_scores' ] );
+    }
+
+    /**
+     * Replace the full document title when a custom SEO title is set.
+     *
+     * @param string $title Current title.
+     * @return string
+     */
+    public function filter_document_title( $title ) {
+        if ( ! $this->option_on( 'enable_meta_tags', true ) ) {
+            return $title;
+        }
+
+        $resolved = $this->resolve_current_request();
+        if ( $resolved === null || empty( $resolved['title_is_custom'] ) || $resolved['title'] === '' ) {
+            return $title;
+        }
+
+        return $resolved['title'];
     }
 
     /**
@@ -32,47 +52,176 @@ class SEOService {
      * @return void
      */
     public function add_seo_meta_tags() {
-        if (!is_singular(['sch_campaign', 'sch_offer', 'post', 'page'])) {
+        $resolved = $this->resolve_current_request();
+        if ( $resolved === null ) {
             return;
         }
 
-        $post_id = get_the_ID();
-        $meta_title = get_post_meta($post_id, '_seo_campaign_hub_meta_title', true);
-        $meta_description = get_post_meta($post_id, '_seo_campaign_hub_meta_description', true);
-        $meta_keywords = get_post_meta($post_id, '_seo_campaign_hub_meta_keywords', true);
-        $canonical_url = get_post_meta($post_id, '_seo_campaign_hub_canonical_url', true);
-        $noindex = get_post_meta($post_id, '_seo_campaign_hub_noindex', true);
-        $nofollow = get_post_meta($post_id, '_seo_campaign_hub_nofollow', true);
-
-        // Meta title
-        if (!empty($meta_title)) {
-            echo '<meta name="title" content="' . esc_attr($meta_title) . '" />' . "\n";
+        if ( $this->option_on( 'enable_meta_tags', true ) && $resolved['description'] !== '' ) {
+            echo '<meta name="description" content="' . esc_attr( $resolved['description'] ) . '" />' . "\n";
         }
 
-        // Meta description
-        if (!empty($meta_description)) {
-            echo '<meta name="description" content="' . esc_attr($meta_description) . '" />' . "\n";
+        $post_id = $this->current_content_id();
+        if ( $post_id < 1 ) {
+            return;
         }
 
-        // Meta keywords
-        if (!empty($meta_keywords)) {
-            echo '<meta name="keywords" content="' . esc_attr($meta_keywords) . '" />' . "\n";
+        $meta_keywords  = get_post_meta( $post_id, '_seo_campaign_hub_meta_keywords', true );
+        $canonical_url  = get_post_meta( $post_id, '_seo_campaign_hub_canonical_url', true );
+        $noindex        = get_post_meta( $post_id, '_seo_campaign_hub_noindex', true );
+        $nofollow       = get_post_meta( $post_id, '_seo_campaign_hub_nofollow', true );
+
+        if ( ! empty( $meta_keywords ) ) {
+            echo '<meta name="keywords" content="' . esc_attr( (string) $meta_keywords ) . '" />' . "\n";
         }
 
-        // Canonical URL
-        if (!empty($canonical_url)) {
-            echo '<link rel="canonical" href="' . esc_url($canonical_url) . '" />' . "\n";
+        if ( ! empty( $canonical_url ) ) {
+            echo '<link rel="canonical" href="' . esc_url( (string) $canonical_url ) . '" />' . "\n";
         } else {
-            echo '<link rel="canonical" href="' . esc_url(get_permalink($post_id)) . '" />' . "\n";
+            echo '<link rel="canonical" href="' . esc_url( get_permalink( $post_id ) ) . '" />' . "\n";
         }
 
-        // Robots meta
-        if ($noindex || $nofollow) {
+        if ( $noindex || $nofollow ) {
             $robots = [];
-            if ($noindex) $robots[] = 'noindex';
-            if ($nofollow) $robots[] = 'nofollow';
-            echo '<meta name="robots" content="' . esc_attr(implode(', ', $robots)) . '" />' . "\n";
+            if ( $noindex ) {
+                $robots[] = 'noindex';
+            }
+            if ( $nofollow ) {
+                $robots[] = 'nofollow';
+            }
+            echo '<meta name="robots" content="' . esc_attr( implode( ', ', $robots ) ) . '" />' . "\n";
         }
+    }
+
+    /**
+     * Output Open Graph tags.
+     *
+     * @return void
+     */
+    public function add_open_graph_tags() {
+        if ( ! $this->option_on( 'enable_open_graph', true ) ) {
+            return;
+        }
+
+        $resolved = $this->resolve_current_request();
+        if ( $resolved === null || $resolved['title'] === '' ) {
+            return;
+        }
+
+        $is_front = is_front_page();
+        $post_id  = $this->current_content_id();
+        $url      = $is_front ? home_url( '/' ) : ( $post_id > 0 ? get_permalink( $post_id ) : home_url( '/' ) );
+        $type     = $is_front ? 'website' : 'article';
+
+        echo '<meta property="og:title" content="' . esc_attr( $resolved['title'] ) . '" />' . "\n";
+        if ( $resolved['description'] !== '' ) {
+            echo '<meta property="og:description" content="' . esc_attr( $resolved['description'] ) . '" />' . "\n";
+        }
+        echo '<meta property="og:url" content="' . esc_url( (string) $url ) . '" />' . "\n";
+        echo '<meta property="og:type" content="' . esc_attr( $type ) . '" />' . "\n";
+        echo '<meta property="og:site_name" content="' . esc_attr( get_bloginfo( 'name' ) ) . '" />' . "\n";
+
+        if ( $post_id > 0 ) {
+            $image = get_the_post_thumbnail_url( $post_id, 'full' );
+            if ( is_string( $image ) && $image !== '' ) {
+                echo '<meta property="og:image" content="' . esc_url( $image ) . '" />' . "\n";
+            }
+        }
+    }
+
+    /**
+     * @return array{title: string, description: string, title_is_custom: bool}|null
+     */
+    private function resolve_current_request(): ?array {
+        $resolver = new SeoMetaResolver();
+        $options  = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) ) {
+            $options = [];
+        }
+
+        $homepage_title       = isset( $options['homepage_meta_title'] ) ? (string) $options['homepage_meta_title'] : '';
+        $homepage_description = isset( $options['homepage_meta_description'] ) ? (string) $options['homepage_meta_description'] : '';
+
+        if ( is_front_page() && is_home() ) {
+            return $resolver->resolve(
+                [
+                    'context'              => 'front_posts',
+                    'homepage_title'       => $homepage_title,
+                    'homepage_description' => $homepage_description,
+                    'site_name'            => (string) get_bloginfo( 'name' ),
+                    'tagline'              => (string) get_bloginfo( 'description' ),
+                ]
+            );
+        }
+
+        if ( is_front_page() ) {
+            $post_id = (int) get_queried_object_id();
+            $post    = $post_id > 0 ? get_post( $post_id ) : null;
+            return $resolver->resolve(
+                [
+                    'context'              => 'front_page',
+                    'custom_title'         => $post_id > 0 ? (string) get_post_meta( $post_id, SeoMetaResolver::META_TITLE, true ) : '',
+                    'custom_description'   => $post_id > 0 ? (string) get_post_meta( $post_id, SeoMetaResolver::META_DESCRIPTION, true ) : '',
+                    'homepage_title'       => $homepage_title,
+                    'homepage_description' => $homepage_description,
+                    'post_title'           => $post instanceof \WP_Post ? (string) $post->post_title : '',
+                    'excerpt'              => $post instanceof \WP_Post ? (string) $post->post_excerpt : '',
+                    'content'              => $post instanceof \WP_Post ? (string) $post->post_content : '',
+                ]
+            );
+        }
+
+        if ( ! is_singular( [ 'sch_campaign', 'sch_offer', 'post', 'page' ] ) ) {
+            return null;
+        }
+
+        $post_id = (int) get_the_ID();
+        $post    = $post_id > 0 ? get_post( $post_id ) : null;
+        if ( ! $post instanceof \WP_Post ) {
+            return null;
+        }
+
+        return $resolver->resolve(
+            [
+                'context'            => 'singular',
+                'custom_title'       => (string) get_post_meta( $post_id, SeoMetaResolver::META_TITLE, true ),
+                'custom_description' => (string) get_post_meta( $post_id, SeoMetaResolver::META_DESCRIPTION, true ),
+                'post_title'         => (string) $post->post_title,
+                'excerpt'            => (string) $post->post_excerpt,
+                'content'            => (string) $post->post_content,
+            ]
+        );
+    }
+
+    /**
+     * Post ID for the current singular / static front page, else 0.
+     *
+     * @return int
+     */
+    private function current_content_id(): int {
+        if ( is_front_page() && is_home() ) {
+            return 0;
+        }
+        if ( is_front_page() || is_singular( [ 'sch_campaign', 'sch_offer', 'post', 'page' ] ) ) {
+            $id = (int) get_queried_object_id();
+            return $id > 0 ? $id : (int) get_the_ID();
+        }
+        return 0;
+    }
+
+    /**
+     * Nested settings checkbox (default on when missing).
+     *
+     * @param string $key     Option key inside seo_campaign_hub_options.
+     * @param bool   $default Default when unset.
+     * @return bool
+     */
+    private function option_on( string $key, bool $default = true ): bool {
+        $options = get_option( 'seo_campaign_hub_options', [] );
+        if ( ! is_array( $options ) || ! array_key_exists( $key, $options ) ) {
+            return $default;
+        }
+        return (string) $options[ $key ] === '1';
     }
 
     /**

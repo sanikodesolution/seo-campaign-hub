@@ -160,15 +160,30 @@ class Settings {
                 'section' => 'seo',
                 'type' => 'checkbox',
                 'title' => __('Enable Meta Tags', 'seo-campaign-hub'),
-                'description' => __('Automatically add meta tags to campaign pages.', 'seo-campaign-hub'),
+                'description' => __('Automatically add meta tags (title + description) on the homepage, posts, pages, campaigns, and offers.', 'seo-campaign-hub'),
                 'default' => '1'
             ],
             'enable_open_graph' => [
                 'section' => 'seo',
                 'type' => 'checkbox',
                 'title' => __('Enable Open Graph', 'seo-campaign-hub'),
-                'description' => __('Add Open Graph tags for social sharing.', 'seo-campaign-hub'),
+                'description' => __('Add Open Graph tags for social sharing (uses the same SEO title and description).', 'seo-campaign-hub'),
                 'default' => '1'
+            ],
+            'homepage_meta_title' => [
+                'section' => 'seo',
+                'type' => 'text',
+                'title' => __('Homepage SEO Title', 'seo-campaign-hub'),
+                'description' => __('Used on the site front page. If the front page is a static Page, that page’s SEO metabox overrides this when filled. Recommended: 50–60 characters. Do not run another SEO title plugin (Yoast/Rank Math) at the same time.', 'seo-campaign-hub'),
+                'default' => ''
+            ],
+            'homepage_meta_description' => [
+                'section' => 'seo',
+                'type' => 'textarea',
+                'title' => __('Homepage Meta Description', 'seo-campaign-hub'),
+                'description' => __('Front-page meta description. Static front Page metabox wins when filled. Recommended: 120–160 characters.', 'seo-campaign-hub'),
+                'default' => '',
+                'rows' => 3,
             ],
             'block_core_directory_listing' => [
                 'section' => 'seo',
@@ -843,6 +858,19 @@ class Settings {
 
                 default:
                     $sanitized[$field_id] = sanitize_text_field($value);
+            }
+
+            if ( $field_id === 'homepage_meta_title' && isset( $sanitized[ $field_id ] ) ) {
+                $sanitized[ $field_id ] = \SEO_Campaign_Hub\Services\SeoMetaResolver::limit_length(
+                    (string) $sanitized[ $field_id ],
+                    \SEO_Campaign_Hub\Services\SeoMetaResolver::TITLE_MAX
+                );
+            }
+            if ( $field_id === 'homepage_meta_description' && isset( $sanitized[ $field_id ] ) ) {
+                $sanitized[ $field_id ] = \SEO_Campaign_Hub\Services\SeoMetaResolver::limit_length(
+                    (string) $sanitized[ $field_id ],
+                    \SEO_Campaign_Hub\Services\SeoMetaResolver::DESCRIPTION_MAX
+                );
             }
         }
 

@@ -78,6 +78,11 @@ $shortcodes = [
 				<h2><?php esc_html_e( 'Feature guides', 'seo-campaign-hub' ); ?></h2>
 				<div class="sch-help-grid">
 					<div>
+						<h3><?php esc_html_e( 'SEO title & meta', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Set a homepage title and description under Settings → SEO. On posts, pages, campaigns, and offers, use the SEO metabox. Empty fields fall back to the WordPress title and excerpt.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Open SEO settings', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
 						<h3><?php esc_html_e( 'Campaigns', 'seo-campaign-hub' ); ?></h3>
 						<p><?php esc_html_e( 'Campaigns are landing pages published under /campaigns/. Add title, content, featured image, categories, and tags, then publish.', 'seo-campaign-hub' ); ?></p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'edit.php?post_type=sch_campaign' ) ); ?>"><?php esc_html_e( 'Manage Campaigns', 'seo-campaign-hub' ); ?></a></p>
