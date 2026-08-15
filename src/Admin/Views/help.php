@@ -141,6 +141,11 @@ $shortcodes = [
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-url-replace' ) ); ?>"><?php esc_html_e( 'Open URL Replace', 'seo-campaign-hub' ); ?></a></p>
 					</div>
 					<div>
+						<h3><?php esc_html_e( 'Text Replace', 'seo-campaign-hub' ); ?></h3>
+						<p><?php esc_html_e( 'Find and replace any text across the public site with live rules (visible HTML text only). Optional database replace updates titles, posts, Elementor meta, and comments — dry run first, backup before Apply. Use unique phrases, not short common words.', 'seo-campaign-hub' ); ?></p>
+						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-text-replace' ) ); ?>"><?php esc_html_e( 'Open Text Replace', 'seo-campaign-hub' ); ?></a></p>
+					</div>
+					<div>
 						<h3><?php esc_html_e( 'Import / Export', 'seo-campaign-hub' ); ?></h3>
 						<p><?php esc_html_e( 'Download or upload JSON backups of campaigns, offers, short links, settings, or everything. Analytics snapshots export only (cannot be imported). Max import size: 5 MB.', 'seo-campaign-hub' ); ?></p>
 						<p><a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) ); ?>"><?php esc_html_e( 'Open Import/Export', 'seo-campaign-hub' ); ?></a></p>
@@ -342,6 +347,7 @@ $shortcodes = [
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub' ) ); ?>"><?php esc_html_e( 'Dashboard', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-settings' ) ); ?>"><?php esc_html_e( 'Settings', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-url-replace' ) ); ?>"><?php esc_html_e( 'URL Replace', 'seo-campaign-hub' ); ?></a>
+					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-text-replace' ) ); ?>"><?php esc_html_e( 'Text Replace', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-import-export' ) ); ?>"><?php esc_html_e( 'Import/Export', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'admin.php?page=seo-campaign-hub-cloud-backup' ) ); ?>"><?php esc_html_e( 'Cloud Backup', 'seo-campaign-hub' ); ?></a>
 					<a class="button" href="<?php echo esc_url( admin_url( 'options-permalink.php' ) ); ?>"><?php esc_html_e( 'Permalinks', 'seo-campaign-hub' ); ?></a>

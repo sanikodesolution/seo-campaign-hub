@@ -18,6 +18,7 @@ Use it to:
 - Block WordPress core folder listings from Google (`/wp-includes/SimplePie/`)
 - Optimize front-end code (clean WP head, minify HTML, defer JS)
 - Replace any URL site-wide (live rules + database find/replace)
+- Replace any text site-wide (live rules + database find/replace)
 - Serve **Google AdSense `ads.txt`** from your site root (`/ads.txt`)
 - Import / export campaign data
 - Back up plugin data to **Google Drive** (Client Secret + browser popup Sync; manual + scheduled)
@@ -81,6 +82,7 @@ After activation you will see **SEO Campaign Hub** in the WordPress admin sideba
 | **Import/Export** | Download or upload JSON backups (campaigns, offers, links, settings) |
 | **Cloud Backup** | Connect Google Drive (password + browser popup Sync), run plugin backups, schedules, and retention |
 | **URL Replace** | Replace any URL site-wide: live rules (anytime) + optional database rewrite |
+| **Text Replace** | Replace any text site-wide: live rules (anytime) + optional database rewrite |
 | **Help** | In-plugin help and support notes |
 
 You can also reach the Dashboard and Settings from the plugin row on the **Plugins** page.
@@ -529,6 +531,19 @@ Design: `docs/superpowers/specs/2026-08-09-url-replace-design.md`
 
 ---
 
+## Text Replace
+
+Find and replace any text across the site from **SEO Campaign Hub → Text Replace**.
+
+1. **Live rules** — enter Find text + Replace with → **Add live rule**. Visible HTML text updates immediately (between tags only). Turn off or delete the rule anytime. The database is not changed.
+2. **Database replace** (optional, permanent) — same Find/Replace → **Dry run** to count rows → backup → check confirm → **Apply to database**. Updates post titles/content, post meta (including Elementor JSON), options, comments, and short-link targeting (serialized-safe).
+
+Find must be at least 3 characters. HTML tags and `javascript:` targets are not allowed. Use unique phrases, not short common words. Match is case-sensitive (not regex). Leave Replace empty to remove the find text.
+
+Design: `docs/superpowers/specs/2026-08-15-text-replace-design.md`
+
+---
+
 ## Shortcodes
 
 You can embed plugin content in posts, pages, or landing templates.
@@ -736,6 +751,7 @@ Always keep a full WordPress backup before large imports.
 | GSC “Duplicate without user-selected canonical” on `/wp-includes/SimplePie/` | Enable **Settings → SEO → Block core directory listings**, visit wp-admin once (writes `.htaccess`), confirm a sample URL returns **403**, then re-validate in Search Console. On Nginx disable `autoindex`. |
 | Layout or slider breaks after optimize | Disable **Defer JavaScript** or **Minify HTML** under **Settings → Advanced**. jQuery/Elementor are never deferred. |
 | Wrong URL still showing after live replace | Hard-refresh / purge LiteSpeed or host cache. Confirm the live rule is **On** and the Find string matches the URL exactly (including https). |
+| Wrong text still showing after live replace | Hard-refresh / purge cache. Confirm the live rule is **On** and Find matches exactly (case-sensitive). Live rules only change visible text between HTML tags, not attributes. |
 | Google Drive backup fails | Confirm Drive API is enabled, redirect URI matches Cloud Backup exactly, allow popups, click **Sync with Google Drive**, and check **Last backup** on Cloud Backup |
 | Scheduled cloud backup never runs | WordPress cron needs site visits — enable the schedule on Cloud Backup, verify **Save schedule** succeeded, and on quiet sites use server cron or a cron plugin to trigger `wp-cron.php` |
 | Share icons missing on Posts list | Enable Social Share; confirm post type is **post** (not pages/campaigns); publish the post; confirm you can edit it |
@@ -759,6 +775,11 @@ Deactivating the plugin keeps your data. Fully deleting the plugin can remove pl
 For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact the support team.
 
 ## Changelog
+
+### 1.1.25 (2026-08-15)
+
+- **Text Replace** admin page: live text rules (anytime) + dry-run/apply database replace
+- Design: `docs/superpowers/specs/2026-08-15-text-replace-design.md`
 
 ### 1.1.24 (2026-08-13)
 

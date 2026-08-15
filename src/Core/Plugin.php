@@ -265,6 +265,10 @@ final class Plugin {
         $this->container->singleton( 'url_replace', function () {
             return new \SEO_Campaign_Hub\Services\UrlReplaceService();
         } );
+
+        $this->container->singleton( 'text_replace', function () {
+            return new \SEO_Campaign_Hub\Services\TextReplaceService();
+        } );
     }
 
     // =========================================================
@@ -371,6 +375,15 @@ final class Plugin {
             if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
                 // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
                 error_log( 'SEO Campaign Hub URL replace failed: ' . $e->getMessage() );
+            }
+        }
+
+        try {
+            $this->container->get( 'text_replace' )->init();
+        } catch ( \Throwable $e ) {
+            if ( defined( 'WP_DEBUG' ) && WP_DEBUG ) {
+                // phpcs:ignore WordPress.PHP.DevelopmentFunctions.error_log_error_log
+                error_log( 'SEO Campaign Hub text replace failed: ' . $e->getMessage() );
             }
         }
     }

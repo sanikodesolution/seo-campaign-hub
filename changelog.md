@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.25 - 2026-08-15
+- **Text Replace**: live find→replace rules for visible page text (change anytime)
+- Optional serialized/JSON-safe database replace (titles, posts, meta, options, comments) with dry run
+- Design: `docs/superpowers/specs/2026-08-15-text-replace-design.md`
+
 ## 1.1.24 - 2026-08-13
 - **SEO title & meta**: editor metabox (post, page, campaign, offer) plus Homepage Title / Description in Settings → SEO
 - Front-end document title, meta description, and Open Graph use custom values with WP fallbacks
