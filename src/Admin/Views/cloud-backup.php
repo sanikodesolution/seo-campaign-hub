@@ -130,13 +130,23 @@ $notice_key = isset( $notice ) ? (string) $notice : '';
 			<section class="sch-ie-panel" style="margin-bottom:24px">
 				<h2><?php esc_html_e( 'Backup now', 'seo-campaign-hub' ); ?></h2>
 
+				<h3><?php esc_html_e( 'Themes only', 'seo-campaign-hub' ); ?></h3>
+				<p><?php esc_html_e( 'Downloads every theme under wp-content/themes, plus theme-data.json (active theme, Customizer theme mods, widgets). No plugins, uploads, or full database — much smaller and more reliable.', 'seo-campaign-hub' ); ?></p>
+				<p>
+					<button type="button" class="button button-primary" id="sch-themes-download" data-sch-backup-destination="download" data-sch-backup-scope="themes">
+						<?php esc_html_e( 'Download themes ZIP', 'seo-campaign-hub' ); ?>
+					</button>
+				</p>
+
+				<hr style="margin:20px 0" />
+
 				<h3><?php esc_html_e( 'Full WordPress site', 'seo-campaign-hub' ); ?></h3>
 				<p><?php esc_html_e( 'WordPress only: database + plugins, themes, uploads, mu-plugins, languages. Does not include html/, php-template/, or other subdomain/static folders.', 'seo-campaign-hub' ); ?></p>
 				<p>
-					<button type="button" class="button button-primary" id="sch-full-site-download" data-sch-backup-destination="download">
+					<button type="button" class="button" id="sch-full-site-download" data-sch-backup-destination="download" data-sch-backup-scope="full">
 						<?php esc_html_e( 'Download full site ZIP', 'seo-campaign-hub' ); ?>
 					</button>
-					<button type="button" class="button" id="sch-full-site-backup" data-sch-backup-destination="drive" data-sch-drive-required="<?php echo $connected ? '0' : '1'; ?>" <?php disabled( ! $connected ); ?>>
+					<button type="button" class="button" id="sch-full-site-backup" data-sch-backup-destination="drive" data-sch-backup-scope="full" data-sch-drive-required="<?php echo $connected ? '0' : '1'; ?>" <?php disabled( ! $connected ); ?>>
 						<?php esc_html_e( 'Backup full site to Google Drive', 'seo-campaign-hub' ); ?>
 					</button>
 				</p>

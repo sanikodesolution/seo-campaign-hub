@@ -773,9 +773,10 @@ class AdminInit {
                 'ajaxUrl' => admin_url( 'admin-ajax.php' ),
                 'nonce'   => wp_create_nonce( 'sch_full_site_backup' ),
                 'i18n'    => [
-                    'starting' => __( 'Starting full site backup…', 'seo-campaign-hub' ),
-                    'failed'   => __( 'Full site backup failed.', 'seo-campaign-hub' ),
-                    'done'     => __( 'Full site backup complete.', 'seo-campaign-hub' ),
+                    'starting'       => __( 'Starting full site backup…', 'seo-campaign-hub' ),
+                    'startingThemes' => __( 'Starting themes backup…', 'seo-campaign-hub' ),
+                    'failed'         => __( 'Backup failed.', 'seo-campaign-hub' ),
+                    'done'           => __( 'Backup complete.', 'seo-campaign-hub' ),
                 ],
             ]
         );
@@ -1368,7 +1369,8 @@ class AdminInit {
         check_ajax_referer( 'sch_full_site_backup', 'nonce' );
 
         $destination = isset( $_POST['destination'] ) ? sanitize_key( wp_unslash( $_POST['destination'] ) ) : 'drive';
-        $result      = $this->container->get( 'full_site_backup' )->start_job( $destination );
+        $scope       = isset( $_POST['scope'] ) ? sanitize_key( wp_unslash( $_POST['scope'] ) ) : 'full';
+        $result      = $this->container->get( 'full_site_backup' )->start_job( $destination, $scope );
         if ( empty( $result['success'] ) ) {
             wp_send_json_error( $result );
         }

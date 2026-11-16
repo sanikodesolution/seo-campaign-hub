@@ -776,6 +776,10 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ## Changelog
 
+### 1.1.27 (2026-11-17)
+
+- Cloud Backup: **Download themes ZIP** (all theme files + theme-data.json for Customizer/widgets)
+
 ### 1.1.26 (2026-11-17)
 
 - Fix full-site ZIP download: exclude `uploads/sch-backups/` from the archive, stream downloads reliably, allow retry until the link expires

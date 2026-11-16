@@ -1,5 +1,9 @@
 # Changelog
 
+## 1.1.27 - 2026-11-17
+- **Cloud Backup**: Download themes ZIP only (`wp-content/themes` + `theme-data.json` for Customizer mods, widgets, active theme)
+- Skips plugins/uploads/full DB so theme downloads stay small and reliable
+
 ## 1.1.26 - 2026-11-17
 - Fix full-site **Download ZIP** failing after temp files moved to `uploads/sch-backups/`: exclude that folder (and plugin temp) from the ZIP so backups no longer pack themselves
 - Stream ZIP downloads in chunks, clear output buffers, keep the file until the link expires so retries work

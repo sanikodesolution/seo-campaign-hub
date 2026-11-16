@@ -106,12 +106,15 @@
 		});
 	}
 
-	function post(action, destination) {
+	function post(action, destination, scope) {
 		var body = new FormData();
 		body.append('action', action);
 		body.append('nonce', cfg.nonce);
 		if (destination) {
 			body.append('destination', destination);
+		}
+		if (scope) {
+			body.append('scope', scope);
 		}
 		return fetch(cfg.ajaxUrl, {
 			method: 'POST',
@@ -185,11 +188,16 @@
 				return;
 			}
 			var destination = btn.getAttribute('data-sch-backup-destination') || 'drive';
+			var scope = btn.getAttribute('data-sch-backup-scope') || 'full';
 			busy = true;
 			setButtonsDisabled(true);
-			setProgress(1, (cfg.i18n && cfg.i18n.starting) || 'Starting…');
+			var startingMsg =
+				scope === 'themes'
+					? (cfg.i18n && cfg.i18n.startingThemes) || 'Starting themes backup…'
+					: (cfg.i18n && cfg.i18n.starting) || 'Starting…';
+			setProgress(1, startingMsg);
 
-			post('sch_full_site_backup_start', destination)
+			post('sch_full_site_backup_start', destination, scope)
 				.then(function (json) {
 					var data = (json && json.data) || {};
 					if (!json || !json.success) {

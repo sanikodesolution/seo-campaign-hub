@@ -34,13 +34,15 @@ class FullSiteBackupService {
 	}
 
 	/**
-	 * Start a new full-site backup job.
+	 * Start a new backup job.
 	 *
 	 * @param string $destination drive|download.
+	 * @param string $scope       full|themes.
 	 * @return array{success:bool,message:string,job?:array<string,mixed>}
 	 */
-	public function start_job( string $destination = 'drive' ): array {
+	public function start_job( string $destination = 'drive', string $scope = 'full' ): array {
 		$destination = ( 'download' === $destination ) ? 'download' : 'drive';
+		$scope       = ( 'themes' === $scope ) ? 'themes' : 'full';
 
 		if ( 'drive' === $destination && ! $this->drive->is_connected() ) {
 			return [ 'success' => false, 'message' => __( 'Connect Google Drive first.', 'seo-campaign-hub' ) ];
@@ -52,15 +54,16 @@ class FullSiteBackupService {
 
 		$existing = $this->get_job();
 		if ( is_array( $existing ) && ( $existing['status'] ?? '' ) === 'running' ) {
-			$started = (int) ( $existing['created_at'] ?? 0 );
-			if ( $started > 0 && ( time() - $started ) < 30 * MINUTE_IN_SECONDS ) {
+			$started       = (int) ( $existing['created_at'] ?? 0 );
+			$force_replace = ( 'themes' === $scope && 'download' === $destination );
+			if ( ! $force_replace && $started > 0 && ( time() - $started ) < 30 * MINUTE_IN_SECONDS ) {
 				return [
 					'success' => true,
 					'message' => __( 'Backup already in progress.', 'seo-campaign-hub' ),
 					'job'     => $this->public_job( $existing ),
 				];
 			}
-			// Stale job — allow a new run.
+			// Stale / themes override — allow a new run.
 			$this->cleanup_work_dir( (string) ( $existing['work_dir'] ?? '' ) );
 			if ( ! empty( $existing['zip_path'] ) && is_string( $existing['zip_path'] ) && file_exists( $existing['zip_path'] ) ) {
 				wp_delete_file( $existing['zip_path'] );
@@ -80,51 +83,63 @@ class FullSiteBackupService {
 		}
 
 		$stamp    = gmdate( 'Y-m-d-His' );
-		$work_dir = $base . 'full-' . $stamp . '-' . wp_generate_password( 6, false ) . '/';
+		$prefix   = ( 'themes' === $scope ) ? 'themes' : 'full';
+		$work_dir = $base . $prefix . '-' . $stamp . '-' . wp_generate_password( 6, false ) . '/';
 		if ( ! wp_mkdir_p( $work_dir ) ) {
 			return [ 'success' => false, 'message' => __( 'Could not create temporary backup folder.', 'seo-campaign-hub' ) ];
 		}
 
-		global $wpdb;
-		$like   = $wpdb->esc_like( $wpdb->prefix ) . '%';
-		$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) );
-		if ( ! is_array( $tables ) || $tables === [] ) {
-			return [ 'success' => false, 'message' => __( 'No database tables found to back up.', 'seo-campaign-hub' ) ];
-		}
+		$zip_name = ( 'themes' === $scope )
+			? 'seo-campaign-hub-themes-' . $stamp . '.zip'
+			: 'seo-campaign-hub-full-' . $stamp . '.zip';
 
 		$job = [
-			'id'             => wp_generate_password( 12, false ),
-			'destination'    => $destination,
-			'status'         => 'running',
-			'phase'          => 'dump',
-			'created_at'     => time(),
-			'work_dir'       => $work_dir,
-			'sql_path'       => $work_dir . 'database.sql',
-			'files_manifest' => $work_dir . 'files.json',
-			'zip_path'       => $base . 'seo-campaign-hub-full-' . $stamp . '.zip',
-			'zip_name'       => 'seo-campaign-hub-full-' . $stamp . '.zip',
-			'tables'         => array_values( $tables ),
-			'table_index'    => 0,
-			'file_index'     => 0,
-			'file_total'     => 0,
-			'zip_opened'     => 0,
-			'upload_url'     => '',
-			'upload_offset'  => 0,
-			'upload_size'    => 0,
-			'download_token' => '',
+			'id'               => wp_generate_password( 12, false ),
+			'scope'            => $scope,
+			'destination'      => $destination,
+			'status'           => 'running',
+			'phase'            => ( 'themes' === $scope ) ? 'theme_data' : 'dump',
+			'created_at'       => time(),
+			'work_dir'         => $work_dir,
+			'sql_path'         => $work_dir . 'database.sql',
+			'theme_data_path'  => $work_dir . 'theme-data.json',
+			'files_manifest'   => $work_dir . 'files.json',
+			'zip_path'         => $base . $zip_name,
+			'zip_name'         => $zip_name,
+			'tables'           => [],
+			'table_index'      => 0,
+			'file_index'       => 0,
+			'file_total'       => 0,
+			'zip_opened'       => 0,
+			'upload_url'       => '',
+			'upload_offset'    => 0,
+			'upload_size'      => 0,
+			'download_token'   => '',
 			'download_expires' => 0,
-			'message'        => __( 'Starting database dump…', 'seo-campaign-hub' ),
-			'percent'        => 1,
-			'error'          => '',
+			'message'          => ( 'themes' === $scope )
+				? __( 'Collecting theme options and Customizer data…', 'seo-campaign-hub' )
+				: __( 'Starting database dump…', 'seo-campaign-hub' ),
+			'percent'          => 1,
+			'error'            => '',
 		];
 
-		// Seed SQL header.
-		$header  = "-- SEO Campaign Hub full site backup\n";
-		$header .= '-- Generated: ' . gmdate( 'c' ) . "\n";
-		$header .= '-- Site: ' . home_url( '/' ) . "\n\n";
-		$header .= "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
-		file_put_contents( $job['sql_path'], $header );
+		if ( 'themes' !== $scope ) {
+			global $wpdb;
+			$like   = $wpdb->esc_like( $wpdb->prefix ) . '%';
+			$tables = $wpdb->get_col( $wpdb->prepare( 'SHOW TABLES LIKE %s', $like ) );
+			if ( ! is_array( $tables ) || $tables === [] ) {
+				return [ 'success' => false, 'message' => __( 'No database tables found to back up.', 'seo-campaign-hub' ) ];
+			}
+			$job['tables'] = array_values( $tables );
+
+			// Seed SQL header.
+			$header  = "-- SEO Campaign Hub full site backup\n";
+			$header .= '-- Generated: ' . gmdate( 'c' ) . "\n";
+			$header .= '-- Site: ' . home_url( '/' ) . "\n\n";
+			$header .= "SET NAMES utf8mb4;\nSET FOREIGN_KEY_CHECKS=0;\n\n";
+			// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+			file_put_contents( $job['sql_path'], $header );
+		}
 
 		$this->save_job( $job );
 
@@ -171,6 +186,9 @@ class FullSiteBackupService {
 
 		try {
 			switch ( (string) $job['phase'] ) {
+				case 'theme_data':
+					$job = $this->phase_theme_data( $job );
+					break;
 				case 'dump':
 					$job = $this->phase_dump( $job );
 					break;
@@ -279,6 +297,7 @@ class FullSiteBackupService {
 	private function public_job( array $job ): array {
 		$out = [
 			'id'          => (string) ( $job['id'] ?? '' ),
+			'scope'       => (string) ( $job['scope'] ?? 'full' ),
 			'status'      => (string) ( $job['status'] ?? '' ),
 			'phase'       => (string) ( $job['phase'] ?? '' ),
 			'destination' => (string) ( $job['destination'] ?? 'drive' ),
@@ -378,6 +397,102 @@ class FullSiteBackupService {
 	}
 
 	/**
+	 * Export active theme options, Customizer mods, and widgets (themes scope).
+	 *
+	 * @param array<string, mixed> $job Job.
+	 * @return array<string, mixed>
+	 */
+	private function phase_theme_data( array $job ): array {
+		$path = (string) ( $job['theme_data_path'] ?? '' );
+		if ( $path === '' ) {
+			$path = trailingslashit( (string) $job['work_dir'] ) . 'theme-data.json';
+			$job['theme_data_path'] = $path;
+		}
+
+		$payload = $this->build_theme_data_payload();
+		$json    = wp_json_encode( $payload, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE );
+		if ( ! is_string( $json ) || $json === '' ) {
+			throw new \RuntimeException( __( 'Could not encode theme data.', 'seo-campaign-hub' ) );
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+		if ( false === file_put_contents( $path, $json ) ) {
+			throw new \RuntimeException( __( 'Could not write theme-data.json.', 'seo-campaign-hub' ) );
+		}
+
+		$job['phase']   = 'collect';
+		$job['percent'] = 20;
+		$job['message'] = __( 'Collecting theme files…', 'seo-campaign-hub' );
+		return $job;
+	}
+
+	/**
+	 * Theme files + related options for restore.
+	 *
+	 * @return array<string, mixed>
+	 */
+	private function build_theme_data_payload(): array {
+		global $wpdb;
+
+		$payload = [
+			'generated_at'   => gmdate( 'c' ),
+			'site_url'       => home_url( '/' ),
+			'template'       => (string) get_option( 'template', '' ),
+			'stylesheet'     => (string) get_option( 'stylesheet', '' ),
+			'current_theme'  => (string) get_option( 'current_theme', '' ),
+			'sidebars_widgets' => get_option( 'sidebars_widgets', [] ),
+			'theme_mods'     => [],
+			'widgets'        => [],
+			'options'        => [],
+			'installed_themes' => [],
+		];
+
+		if ( function_exists( 'wp_get_themes' ) ) {
+			foreach ( wp_get_themes() as $slug => $theme ) {
+				/** @var \WP_Theme $theme */
+				$payload['installed_themes'][ (string) $slug ] = [
+					'name'       => $theme->get( 'Name' ),
+					'version'    => $theme->get( 'Version' ),
+					'stylesheet' => $theme->get_stylesheet(),
+					'template'   => $theme->get_template(),
+					'parent'     => $theme->parent() ? $theme->get_template() : '',
+				];
+			}
+		}
+
+		// phpcs:ignore WordPress.DB.DirectDatabaseQuery.DirectQuery, WordPress.DB.DirectDatabaseQuery.NoCaching
+		$rows = $wpdb->get_results(
+			"SELECT option_name, option_value FROM {$wpdb->options}
+			WHERE option_name LIKE 'theme_mods_%'
+			   OR option_name LIKE 'widget_%'
+			   OR option_name IN (
+					'template','stylesheet','current_theme','sidebars_widgets',
+					'theme_switched','theme_switched_via_customizer',
+					'custom_css_post_ids','wp_global_styles_css'
+			   )"
+		);
+
+		if ( is_array( $rows ) ) {
+			foreach ( $rows as $row ) {
+				$name = (string) ( $row->option_name ?? '' );
+				if ( $name === '' ) {
+					continue;
+				}
+				$value = maybe_unserialize( $row->option_value );
+				if ( 0 === strpos( $name, 'theme_mods_' ) ) {
+					$payload['theme_mods'][ $name ] = $value;
+				} elseif ( 0 === strpos( $name, 'widget_' ) ) {
+					$payload['widgets'][ $name ] = $value;
+				} else {
+					$payload['options'][ $name ] = $value;
+				}
+			}
+		}
+
+		return $payload;
+	}
+
+	/**
 	 * Collect only WordPress content roots (plugins/themes/uploads/etc).
 	 *
 	 * @param array<string, mixed> $job Job.
@@ -386,14 +501,19 @@ class FullSiteBackupService {
 	private function phase_collect( array $job ): array {
 		$files = [];
 
-		// Only these wp-content children — never whole server / html / subdomain trees.
-		$allowed_roots = [
-			'plugins',
-			'themes',
-			'mu-plugins',
-			'uploads',
-			'languages',
-		];
+		// Themes-only jobs skip plugins/uploads/etc — much smaller and more reliable.
+		if ( ( $job['scope'] ?? 'full' ) === 'themes' ) {
+			$allowed_roots = [ 'themes' ];
+		} else {
+			// Only these wp-content children — never whole server / html / subdomain trees.
+			$allowed_roots = [
+				'plugins',
+				'themes',
+				'mu-plugins',
+				'uploads',
+				'languages',
+			];
+		}
 
 		$skip_substrings = [
 			'/cache/',
@@ -425,13 +545,23 @@ class FullSiteBackupService {
 		];
 
 		$content_root = wp_normalize_path( WP_CONTENT_DIR );
+		$scan_dirs    = [];
 
-		foreach ( $allowed_roots as $dir_name ) {
-			$dir = trailingslashit( $content_root ) . $dir_name;
-			if ( ! is_dir( $dir ) ) {
-				continue;
+		if ( ( $job['scope'] ?? 'full' ) === 'themes' && function_exists( 'get_theme_root' ) ) {
+			$theme_root = wp_normalize_path( (string) get_theme_root() );
+			if ( is_dir( $theme_root ) ) {
+				$scan_dirs[] = $theme_root;
 			}
+		} else {
+			foreach ( $allowed_roots as $dir_name ) {
+				$dir = trailingslashit( $content_root ) . $dir_name;
+				if ( is_dir( $dir ) ) {
+					$scan_dirs[] = wp_normalize_path( $dir );
+				}
+			}
+		}
 
+		foreach ( $scan_dirs as $dir ) {
 			$iterator = new \RecursiveIteratorIterator(
 				new \RecursiveDirectoryIterator( $dir, \FilesystemIterator::SKIP_DOTS )
 			);
@@ -457,18 +587,27 @@ class FullSiteBackupService {
 				}
 
 				// Must stay under this allowed root.
-				if ( 0 !== strpos( $path, wp_normalize_path( $dir ) ) ) {
+				if ( 0 !== strpos( $path, $dir ) ) {
 					continue;
 				}
 
-				$rel_from_content = ltrim( substr( $path, strlen( $content_root ) ), '/\\' );
-				$rel              = 'wp-content/' . str_replace( '\\', '/', $rel_from_content );
+				if ( 0 === strpos( $path, $content_root ) ) {
+					$rel_from_content = ltrim( substr( $path, strlen( $content_root ) ), '/\\' );
+					$rel              = 'wp-content/' . str_replace( '\\', '/', $rel_from_content );
+				} else {
+					// Custom theme root outside wp-content — keep a themes/ prefix in the ZIP.
+					$rel = 'wp-content/themes/' . ltrim( str_replace( '\\', '/', substr( $path, strlen( $dir ) ) ), '/' );
+				}
 
 				$files[] = [
 					'abs' => $path,
 					'rel' => $rel,
 				];
 			}
+		}
+
+		if ( ( $job['scope'] ?? 'full' ) === 'themes' && $files === [] ) {
+			throw new \RuntimeException( __( 'No theme files found under the WordPress themes directory.', 'seo-campaign-hub' ) );
 		}
 
 		$manifest = (string) $job['files_manifest'];
@@ -478,11 +617,19 @@ class FullSiteBackupService {
 		$job['file_index'] = 0;
 		$job['file_total'] = count( $files );
 		$job['phase']      = 'zip';
-		$job['message']    = sprintf(
-			/* translators: %d: file count */
-			__( 'Zipping WordPress files… %d', 'seo-campaign-hub' ),
-			count( $files )
-		);
+		if ( ( $job['scope'] ?? 'full' ) === 'themes' ) {
+			$job['message'] = sprintf(
+				/* translators: %d: file count */
+				__( 'Zipping theme files… %d', 'seo-campaign-hub' ),
+				count( $files )
+			);
+		} else {
+			$job['message'] = sprintf(
+				/* translators: %d: file count */
+				__( 'Zipping WordPress files… %d', 'seo-campaign-hub' ),
+				count( $files )
+			);
+		}
 		$job['percent'] = 35;
 		return $job;
 	}
@@ -503,9 +650,27 @@ class FullSiteBackupService {
 		$zip      = $this->open_zip_archive( $zip_path, empty( $job['zip_opened'] ) );
 
 		if ( empty( $job['zip_opened'] ) ) {
-			$sql = (string) $job['sql_path'];
-			if ( is_readable( $sql ) ) {
-				$zip->addFile( $sql, 'database.sql' );
+			if ( ( $job['scope'] ?? 'full' ) === 'themes' ) {
+				$theme_data = (string) ( $job['theme_data_path'] ?? '' );
+				if ( $theme_data !== '' && is_readable( $theme_data ) ) {
+					$zip->addFile( $theme_data, 'theme-data.json' );
+				}
+				$readme = (string) $job['work_dir'] . 'THEMES-README.txt';
+				$readme_body = "SEO Campaign Hub — Themes backup\n"
+					. "Contains wp-content/themes/ plus theme-data.json\n"
+					. "(active theme, Customizer theme_mods, widgets).\n"
+					. "Copy the themes folder into wp-content/themes on the target site.\n"
+					. "Import theme-data.json options manually or via a restore tool.\n";
+				// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_file_put_contents
+				file_put_contents( $readme, $readme_body );
+				if ( is_readable( $readme ) ) {
+					$zip->addFile( $readme, 'THEMES-README.txt' );
+				}
+			} else {
+				$sql = (string) $job['sql_path'];
+				if ( is_readable( $sql ) ) {
+					$zip->addFile( $sql, 'database.sql' );
+				}
 			}
 			$job['zip_opened'] = 1;
 		}
@@ -658,8 +823,12 @@ class FullSiteBackupService {
 		$job['status']           = 'done';
 		$job['phase']            = 'done';
 		$job['percent']          = 100;
-		$job['message']          = __( 'Backup ready. Starting download…', 'seo-campaign-hub' );
-		$this->record_status( true, __( 'Full site backup ZIP ready to download.', 'seo-campaign-hub' ) );
+		$job['message'] = __( 'Backup ready. Starting download…', 'seo-campaign-hub' );
+		if ( ( $job['scope'] ?? 'full' ) === 'themes' ) {
+			$this->record_status( true, __( 'Themes ZIP ready to download.', 'seo-campaign-hub' ) );
+		} else {
+			$this->record_status( true, __( 'Full site backup ZIP ready to download.', 'seo-campaign-hub' ) );
+		}
 
 		return $job;
 	}
