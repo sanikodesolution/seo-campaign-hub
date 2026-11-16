@@ -148,13 +148,18 @@ class FullSiteBackupService {
 		$job = $this->get_job();
 		if ( ! is_array( $job ) || ( $job['status'] ?? '' ) !== 'running' ) {
 			if ( is_array( $job ) && ( $job['status'] ?? '' ) === 'done' ) {
-				return [
+				$public = $this->public_job( $job );
+				$out    = [
 					'success' => true,
 					'done'    => true,
 					'message' => (string) ( $job['message'] ?? __( 'Backup complete.', 'seo-campaign-hub' ) ),
 					'percent' => 100,
-					'job'     => $this->public_job( $job ),
+					'job'     => $public,
 				];
+				if ( ! empty( $public['download_url'] ) ) {
+					$out['download_url'] = $public['download_url'];
+				}
+				return $out;
 			}
 			return [
 				'success' => false,
@@ -398,8 +403,11 @@ class FullSiteBackupService {
 			'/backups-dup-lite/',
 			'/wpvividbackups/',
 			'/wpvivid_uploaded_backup/',
+			// Own backup temp (uploads/sch-backups + plugin uploads/temp) must never be zipped into itself.
+			'/sch-backups/',
 			'/seo-campaign-hub/uploads/temp/',
 			'/uploads/temp/full-',
+			'/uploads/temp/',
 			'/debug.log',
 			// Non-WordPress / static / template / multi-site clutter if present under wp-content.
 			'/html/',
@@ -623,9 +631,26 @@ class FullSiteBackupService {
 	private function phase_finish_download( array $job ): array {
 		$this->cleanup_work_dir( (string) ( $job['work_dir'] ?? '' ) );
 
-		if ( empty( $job['zip_path'] ) || ! file_exists( (string) $job['zip_path'] ) ) {
+		$zip_path = (string) ( $job['zip_path'] ?? '' );
+		if ( $zip_path === '' || ! file_exists( $zip_path ) ) {
 			throw new \RuntimeException( __( 'ZIP file missing for download.', 'seo-campaign-hub' ) );
 		}
+
+		$zip_size = filesize( $zip_path );
+		if ( false === $zip_size || $zip_size < 22 ) {
+			throw new \RuntimeException( __( 'ZIP file is empty or incomplete.', 'seo-campaign-hub' ) );
+		}
+
+		// Confirm the archive opens before handing a download link to the browser.
+		$check = new \ZipArchive();
+		$opened = $check->open( $zip_path, \ZipArchive::CHECKCONS );
+		if ( true !== $opened ) {
+			$opened = $check->open( $zip_path );
+		}
+		if ( true !== $opened ) {
+			throw new \RuntimeException( __( 'ZIP archive is corrupt and cannot be downloaded.', 'seo-campaign-hub' ) );
+		}
+		$check->close();
 
 		$token = wp_generate_password( 32, false );
 		$job['download_token']   = $token;
@@ -642,39 +667,70 @@ class FullSiteBackupService {
 	/**
 	 * Stream ZIP to the browser for an admin with a valid token.
 	 *
+	 * Keeps the ZIP until expiry so interrupted downloads can be retried.
+	 *
 	 * @param string $token Download token.
 	 * @return void
 	 */
 	public function serve_download( string $token ): void {
+		if ( function_exists( 'set_time_limit' ) ) {
+			@set_time_limit( 0 ); // phpcs:ignore WordPress.PHP.NoSilencedErrors.Discouraged
+		}
+
 		$job = $this->get_job();
 		if ( ! is_array( $job ) || ( $job['destination'] ?? '' ) !== 'download' ) {
-			wp_die( esc_html__( 'No downloadable backup found.', 'seo-campaign-hub' ), 404 );
+			wp_die( esc_html__( 'No downloadable backup found.', 'seo-campaign-hub' ), '', [ 'response' => 404 ] );
 		}
 		if ( empty( $job['download_token'] ) || ! hash_equals( (string) $job['download_token'], $token ) ) {
-			wp_die( esc_html__( 'Invalid download token.', 'seo-campaign-hub' ), 403 );
+			wp_die( esc_html__( 'Invalid download token.', 'seo-campaign-hub' ), '', [ 'response' => 403 ] );
 		}
 		if ( time() > (int) ( $job['download_expires'] ?? 0 ) ) {
-			wp_die( esc_html__( 'Download link expired. Run backup again.', 'seo-campaign-hub' ), 410 );
+			wp_die( esc_html__( 'Download link expired. Run backup again.', 'seo-campaign-hub' ), '', [ 'response' => 410 ] );
 		}
 
 		$path = (string) ( $job['zip_path'] ?? '' );
 		$name = (string) ( $job['zip_name'] ?? 'seo-campaign-hub-full.zip' );
 		if ( $path === '' || ! is_readable( $path ) ) {
-			wp_die( esc_html__( 'Backup file missing.', 'seo-campaign-hub' ), 404 );
+			wp_die( esc_html__( 'Backup file missing.', 'seo-campaign-hub' ), '', [ 'response' => 404 ] );
+		}
+
+		$size = filesize( $path );
+		if ( false === $size || $size < 1 ) {
+			wp_die( esc_html__( 'Backup file is empty or unreadable.', 'seo-campaign-hub' ), '', [ 'response' => 500 ] );
+		}
+
+		// Drop any buffered HTML/notices so the ZIP bytes stay clean.
+		while ( ob_get_level() > 0 ) {
+			ob_end_clean();
 		}
 
 		nocache_headers();
+		header( 'Content-Description: File Transfer' );
 		header( 'Content-Type: application/zip' );
 		header( 'Content-Disposition: attachment; filename="' . sanitize_file_name( $name ) . '"' );
-		header( 'Content-Length: ' . (string) filesize( $path ) );
-		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_readfile
-		readfile( $path );
+		header( 'Content-Transfer-Encoding: binary' );
+		header( 'Content-Length: ' . (string) $size );
+		header( 'X-Content-Type-Options: nosniff' );
 
-		// One-time style cleanup after send.
-		wp_delete_file( $path );
-		$job['download_token'] = '';
-		$job['zip_path']       = '';
-		$job['message']        = __( 'Backup downloaded.', 'seo-campaign-hub' );
+		$handle = fopen( $path, 'rb' ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fopen
+		if ( ! $handle ) {
+			wp_die( esc_html__( 'Could not open backup file for download.', 'seo-campaign-hub' ), '', [ 'response' => 500 ] );
+		}
+
+		// phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fread, WordPress.Security.EscapeOutput.OutputNotEscaped
+		while ( ! feof( $handle ) ) {
+			$chunk = fread( $handle, 1024 * 1024 );
+			if ( false === $chunk ) {
+				break;
+			}
+			echo $chunk;
+			if ( function_exists( 'flush' ) ) {
+				flush();
+			}
+		}
+		fclose( $handle ); // phpcs:ignore WordPress.WP.AlternativeFunctions.file_system_operations_fclose
+
+		$job['message'] = __( 'Backup downloaded.', 'seo-campaign-hub' );
 		$this->save_job( $job );
 		exit;
 	}

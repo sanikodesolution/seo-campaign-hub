@@ -122,9 +122,29 @@
 		});
 	}
 
+	function triggerDownload(url) {
+		var dl = String(url || '').replace(/&amp;/g, '&');
+		if (!dl) {
+			return;
+		}
+		// Prefer a hidden iframe so the Cloud Backup page stays put and the
+		// attachment response is not treated as a full navigation.
+		var frame = document.createElement('iframe');
+		frame.style.display = 'none';
+		frame.setAttribute('aria-hidden', 'true');
+		frame.src = dl;
+		document.body.appendChild(frame);
+		window.setTimeout(function () {
+			if (frame.parentNode) {
+				frame.parentNode.removeChild(frame);
+			}
+		}, 120000);
+	}
+
 	function tickLoop(activeBtn) {
 		return post('sch_full_site_backup_tick').then(function (json) {
 			var data = (json && json.data) || {};
+			var job = data.job || {};
 			var percent = data.percent || 0;
 			var message = data.message || '';
 			setProgress(percent, message);
@@ -133,9 +153,9 @@
 				setProgress(100, message || (cfg.i18n && cfg.i18n.done) || 'Done');
 				busy = false;
 				setButtonsDisabled(false);
-				if (data.download_url) {
-					var dl = String(data.download_url).replace(/&amp;/g, '&');
-					window.location.href = dl;
+				var downloadUrl = data.download_url || job.download_url || '';
+				if (downloadUrl) {
+					triggerDownload(downloadUrl);
 				}
 				return;
 			}

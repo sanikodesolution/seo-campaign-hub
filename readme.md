@@ -776,6 +776,10 @@ For support, visit [seocampaignhub.com](https://seocampaignhub.com) or contact t
 
 ## Changelog
 
+### 1.1.26 (2026-11-17)
+
+- Fix full-site ZIP download: exclude `uploads/sch-backups/` from the archive, stream downloads reliably, allow retry until the link expires
+
 ### 1.1.25 (2026-08-15)
 
 - **Text Replace** admin page: live text rules (anytime) + dry-run/apply database replace

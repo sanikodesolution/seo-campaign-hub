@@ -1,5 +1,10 @@
 # Changelog
 
+## 1.1.26 - 2026-11-17
+- Fix full-site **Download ZIP** failing after temp files moved to `uploads/sch-backups/`: exclude that folder (and plugin temp) from the ZIP so backups no longer pack themselves
+- Stream ZIP downloads in chunks, clear output buffers, keep the file until the link expires so retries work
+- Cloud Backup UI triggers download via hidden iframe and reads `download_url` from the job payload when needed
+
 ## 1.1.25 - 2026-08-15
 - **Text Replace**: live find→replace rules for visible page text (change anytime)
 - Optional serialized/JSON-safe database replace (titles, posts, meta, options, comments) with dry run
